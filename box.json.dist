@@ -1,0 +1,16 @@
+{
+    "directories": [
+        "bin",
+        "src",
+        "vendor"
+    ],
+    "files": [
+        "composer.json",
+        "composer.lock",
+        "README.md",
+        "LICENSE"
+    ],
+    "git-version": "package_version",
+    "main": "bin/psr4-converter.php",
+    "output": "build/psr4-converter.phar"
+}

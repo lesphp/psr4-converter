@@ -1,0 +1,1 @@
+@php %~dp0\psr4-converter.php %*

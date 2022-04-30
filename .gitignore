@@ -1,0 +1,7 @@
+/vendor/
+/.idea/
+/build/
+.php-cs-fixer.php
+.php-cs-fixer.cache
+box.json
+phpunit.xml
