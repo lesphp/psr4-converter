@@ -2,8 +2,8 @@
 
 namespace LesPhp\PSR4Converter\Converter;
 
-use LesPhp\PSR4Converter\Converter\Clean\StatementCleaner;
-use LesPhp\PSR4Converter\Converter\Management\StatementManager;
+use LesPhp\PSR4Converter\Converter\Clean\CleanManager;
+use LesPhp\PSR4Converter\Converter\Node\NodeManager;
 use LesPhp\PSR4Converter\Converter\Naming\NameManager;
 use LesPhp\PSR4Converter\Exception\IncompatibleMergeFilesException;
 use LesPhp\PSR4Converter\KeywordManager;
@@ -120,7 +120,7 @@ class Converter implements ConverterInterface
     private function appendTargetFile(array $stmts, string $targetFilePath, string $initialContent = null): void
     {
         $filesystem = new Filesystem();
-        $statementManager = new StatementManager();
+        $nodeManager = new NodeManager();
         $targetFileAbsolutePath = Path::isAbsolute($targetFilePath)
             ? $targetFilePath
             : $this->destinationPath.'/'.$targetFilePath;
@@ -145,7 +145,7 @@ class Converter implements ConverterInterface
             return;
         }
 
-        $this->dumpTargetFile($statementManager->append($currentStmts, $stmts), $targetFileAbsolutePath);
+        $this->dumpTargetFile($nodeManager->append($currentStmts, $stmts), $targetFileAbsolutePath);
     }
 
     /**
@@ -169,11 +169,11 @@ class Converter implements ConverterInterface
      */
     private function extractUnitStmts(MappedUnit $mappedUnit, string $originalFileContent): array
     {
-        $statementManager = new StatementManager();
+        $nodeManager = new NodeManager();
 
         $stmts = $this->parser->parse($originalFileContent);
 
-        return $statementManager->extract($mappedUnit, $stmts);
+        return $nodeManager->extract($mappedUnit, $stmts);
     }
 
     /**
@@ -193,11 +193,11 @@ class Converter implements ConverterInterface
      */
     private function clearStmts(array $stmts): array
     {
-        $statementCleaner = new StatementCleaner();
+        $cleanManager = new CleanManager();
 
-        $stmts = $statementCleaner->createAliases($stmts, $this->keywordHelper);
+        $stmts = $cleanManager->createAliases($stmts, $this->keywordHelper);
 
-        return $statementCleaner->removeUnusedImports($stmts);
+        return $cleanManager->removeUnusedImports($stmts);
     }
 
     /**

@@ -3,9 +3,10 @@
 namespace LesPhp\PSR4Converter\Command;
 
 use LesPhp\PSR4Converter\Console\MapperDumper;
+use LesPhp\PSR4Converter\Exception\InvalidNamespaceException;
 use LesPhp\PSR4Converter\Exception\MapperConflictException;
 use LesPhp\PSR4Converter\Lexer\CustomEmulativeLexer;
-use LesPhp\PSR4Converter\Mapper\Management\MapperNodeVisitor;
+use LesPhp\PSR4Converter\Mapper\Node\MapFileVisitor;
 use LesPhp\PSR4Converter\Mapper\MapperFactoryInterface;
 use LesPhp\PSR4Converter\Mapper\Result\MappedError;
 use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
@@ -23,35 +24,35 @@ use Symfony\Component\Finder\Finder;
 
 class MapCommand extends Command
 {
-    const SRC_ARGUMENT = 'src';
+    private const SRC_ARGUMENT = 'src';
 
-    const PREFIX_NAMESPACE = 'prefix';
+    private const PREFIX_NAMESPACE = 'prefix';
 
-    const INCLUDES_DIR_PATH = 'includes-dir';
+    private const INCLUDES_DIR_PATH = 'includes-dir';
 
-    const MAP_FILE_PATH = 'map-file';
+    private const MAP_FILE_PATH = 'map-file';
 
-    const APPEND_NAMESPACE = 'append-namespace';
+    private const APPEND_NAMESPACE = 'append-namespace';
 
-    const FOLLOW_SYMLINK = 'follow-symlink';
+    private const FOLLOW_SYMLINK = 'follow-symlink';
 
-    const IGNORE_DOT_FILES = 'ignore-dot-files';
+    private const IGNORE_DOT_FILES = 'ignore-dot-files';
 
-    const IGNORE_VCS_IGNORED = 'ignore-vcs-ignored';
+    private const IGNORE_VCS_IGNORED = 'ignore-vcs-ignored';
 
-    const IGNORE_PATH = 'ignore-path';
+    private const IGNORE_PATH = 'ignore-path';
 
-    const IGNORE_NAMESPACE = 'ignore-namespace';
+    private const IGNORE_NAMESPACE = 'ignore-namespace';
 
-    const USE_PHP5 = 'use-php5';
+    private const USE_PHP5 = 'use-php5';
 
-    const DRY_RUN = 'dry-run';
+    private const DRY_RUN = 'dry-run';
 
-    const UNDERSCORE_CONVERSION = 'underscore-conversion';
+    private const UNDERSCORE_CONVERSION = 'underscore-conversion';
 
-    const IGNORE_NAMESPACED_UNDERSCORE_CONVERSION = 'ignore-namespaced-underscore';
+    private const IGNORE_NAMESPACED_UNDERSCORE_CONVERSION = 'ignore-namespaced-underscore';
 
-    const DEFAULT_MAP_FILENAME = '.psr4-converter.map.json';
+    public const DEFAULT_MAP_FILENAME = '.psr4-converter.map.json';
 
     protected static $defaultName = 'map';
 
@@ -122,8 +123,8 @@ class MapCommand extends Command
                 InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
                 sprintf(
                     'namespace to be ignored. To ignore all namespaces, except global, use %s. To ignore only global namespace use %s ',
-                    MapperNodeVisitor::IGNORE_ALL_NAMESPACES,
-                    MapperNodeVisitor::IGNORE_GLOBAL_NAMESPACE
+                    MapFileVisitor::IGNORE_ALL_NAMESPACES,
+                    MapFileVisitor::IGNORE_GLOBAL_NAMESPACE
                 )
             )
             ->addOption(
@@ -148,7 +149,7 @@ class MapCommand extends Command
                 self::UNDERSCORE_CONVERSION,
                 null,
                 InputOption::VALUE_NONE,
-                'Undercores will means namespace separator. With this option, already namespaced class with name containing undercore may differ from converted consts and functions from same namespace.'
+                'Underscores will means namespace separator. With this option, already namespaced class with name containing underscore may differ from converted constants and functions from same namespace.'
             )
             ->addOption(
                 self::IGNORE_NAMESPACED_UNDERSCORE_CONVERSION,
@@ -158,6 +159,9 @@ class MapCommand extends Command
             );
     }
 
+    /**
+     * @throws InvalidNamespaceException
+     */
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $errorOutput = $output instanceof ConsoleOutputInterface ? $output->getErrorOutput() : $output;
@@ -261,7 +265,7 @@ class MapCommand extends Command
         if (!$dryRun) {
             $filesystem->dumpFile($mapFileRealPath, $this->resultSerializer->serialize($mappedResult));
 
-            $output->writeln("Map successfully saved to {$mapFile}.");
+            $output->writeln("Map successfully saved to $mapFile.");
         }
 
         return Command::SUCCESS;

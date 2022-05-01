@@ -7,7 +7,7 @@ use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\ParentConnectingVisitor;
 
-class StatementCleaner
+class CleanManager
 {
     /**
      * @param Node[] $nodes
@@ -17,7 +17,7 @@ class StatementCleaner
     {
         $traverser = new NodeTraverser();
 
-        $traverser->addVisitor(new AliasCreatorVisitor($keywordHelper));
+        $traverser->addVisitor(new CreateImportsVisitor($keywordHelper));
 
         return $traverser->traverse($nodes);
     }
@@ -30,7 +30,7 @@ class StatementCleaner
     {
         $traverser = new NodeTraverser();
 
-        $traverser->addVisitor(new RemoveUnusedImportVisitor());
+        $traverser->addVisitor(new RemoveUnusedImportsVisitor());
 
         return $traverser->traverse($nodes);
     }
@@ -47,7 +47,7 @@ class StatementCleaner
     ): array {
         return $this->remove(
             $nodes,
-            fn(Node $searchNode) => $searchNode === $nodeToRemove,
+            fn (Node $searchNode) => $searchNode === $nodeToRemove,
             $deleteEmptyParent,
             $subNodeNames
         );

@@ -6,7 +6,7 @@ use PhpParser\Node;
 use PhpParser\Node\Name;
 use PhpParser\NodeVisitorAbstract;
 
-class CurrentAliasesVisitor extends NodeVisitorAbstract
+class FindNamesInUseVisitor extends NodeVisitorAbstract
 {
     /**
      * @var Name[]
@@ -18,7 +18,7 @@ class CurrentAliasesVisitor extends NodeVisitorAbstract
      */
     private array $currentAliases;
 
-    public function __construct(private readonly bool $includeUseImports)
+    public function __construct(private readonly bool $includeImports)
     {
     }
 
@@ -37,7 +37,7 @@ class CurrentAliasesVisitor extends NodeVisitorAbstract
 
     public function enterNode(Node $node)
     {
-        if ($this->includeUseImports) {
+        if ($this->includeImports) {
             if ($node instanceof Node\Stmt\Use_ || $node instanceof Node\Stmt\GroupUse) {
                 array_walk($node->uses, function (Node\Stmt\UseUse $useUse) use ($node) {
                     $namespacedName = $node instanceof Node\Stmt\GroupUse
@@ -69,10 +69,10 @@ class CurrentAliasesVisitor extends NodeVisitorAbstract
 
             $this->visitedNames[] = $node->name;
         } elseif ($node instanceof Node\Name && !$node->isFullyQualified() && !$node->isSpecialClassName() && !in_array(
-                $node,
-                $this->visitedNames,
-                true
-            )) {
+            $node,
+            $this->visitedNames,
+            true
+        )) {
             $this->currentAliases[Node\Stmt\Use_::TYPE_NORMAL][$node->getFirst()] = $node->getAttribute(
                 'resolvedName',
                 $node

@@ -1,6 +1,6 @@
 <?php
 
-namespace LesPhp\PSR4Converter\Mapper\Management;
+namespace LesPhp\PSR4Converter\Mapper\Node;
 
 use LesPhp\PSR4Converter\KeywordManager;
 use LesPhp\PSR4Converter\Mapper\MapperContext;
@@ -10,7 +10,7 @@ use PhpParser\Node\Stmt\If_;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NameResolver;
 
-class StatementManager
+class NodeManager
 {
     /**
      * @param Node[] $nodes
@@ -26,8 +26,11 @@ class StatementManager
 
         $traverser->addVisitor($nameResolver);
         $traverser->addVisitor(
-            new MapperNodeVisitor(
-                $mappedFile, $mapperContext, $nameResolver->getNameContext(), new KeywordManager()
+            new MapFileVisitor(
+                $mappedFile,
+                $mapperContext,
+                $nameResolver->getNameContext(),
+                new KeywordManager()
             )
         );
 
@@ -41,7 +44,7 @@ class StatementManager
     {
         $stmts = array_merge(
             $node->stmts,
-            ...array_map(fn(Node\Stmt\ElseIf_ $elseIf) => $elseIf->stmts, $node->elseifs)
+            ...array_map(fn (Node\Stmt\ElseIf_ $elseIf) => $elseIf->stmts, $node->elseifs)
         );
         $stmts = array_merge($stmts, (array)$node->else?->stmts);
         $allStmts = [];

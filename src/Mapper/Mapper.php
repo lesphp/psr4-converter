@@ -5,8 +5,8 @@ namespace LesPhp\PSR4Converter\Mapper;
 use LesPhp\PSR4Converter\Exception\InvalidNamespaceException;
 use LesPhp\PSR4Converter\Exception\InvalidRootStatementException;
 use LesPhp\PSR4Converter\KeywordManager;
-use LesPhp\PSR4Converter\Mapper\Management\MapperNodeVisitor;
-use LesPhp\PSR4Converter\Mapper\Management\StatementManager;
+use LesPhp\PSR4Converter\Mapper\Node\MapFileVisitor;
+use LesPhp\PSR4Converter\Mapper\Node\NodeManager;
 use LesPhp\PSR4Converter\Mapper\Result\MappedError;
 use LesPhp\PSR4Converter\Mapper\Result\MappedFile;
 use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
@@ -46,8 +46,8 @@ class Mapper implements MapperInterface
 
         foreach ($ignoreNamespaces as $ignoreNamespace) {
             if (
-                $ignoreNamespace !== MapperNodeVisitor::IGNORE_ALL_NAMESPACES
-                && $ignoreNamespace !== MapperNodeVisitor::IGNORE_GLOBAL_NAMESPACE
+                $ignoreNamespace !== MapFileVisitor::IGNORE_ALL_NAMESPACES
+                && $ignoreNamespace !== MapFileVisitor::IGNORE_GLOBAL_NAMESPACE
                 && !$this->keywordHelper->isValidNamespace($ignoreNamespace)) {
                 throw new InvalidNamespaceException();
             }
@@ -112,7 +112,7 @@ class Mapper implements MapperInterface
             return $mappedFile;
         }
 
-        $statementManager = new StatementManager();
+        $nodeManager = new NodeManager();
         $mapperContext = new MapperContext(
             $this->mappedResult->getSrcPath(),
             $this->mappedResult->getIncludesDirPath(),
@@ -124,7 +124,7 @@ class Mapper implements MapperInterface
             $this->mappedResult->getUuid()
         );
 
-        $statementManager->mapFile($mappedFile, $mapperContext, $stmts);
+        $nodeManager->mapFile($mappedFile, $mapperContext, $stmts);
 
         return $mappedFile;
     }
@@ -155,7 +155,7 @@ class Mapper implements MapperInterface
                 case $stmt instanceof Node\Stmt\If_:
                     $this->checkNodesConstraints(
                         $filePath,
-                        (new StatementManager())->getAllConditionalStmts($stmt),
+                        (new NodeManager())->getAllConditionalStmts($stmt),
                         true
                     );
                     continue 2;

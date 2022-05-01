@@ -1,6 +1,6 @@
 <?php
 
-namespace LesPhp\PSR4Converter\Mapper\Management;
+namespace LesPhp\PSR4Converter\Mapper\Node;
 
 use LesPhp\PSR4Converter\Exception\MapperConflictException;
 use LesPhp\PSR4Converter\KeywordManager;
@@ -14,7 +14,7 @@ use PhpParser\Node\Name;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 
-class MapperNodeVisitor extends NodeVisitorAbstract
+class MapFileVisitor extends NodeVisitorAbstract
 {
     public const IGNORE_ALL_NAMESPACES = '*';
 
@@ -92,7 +92,8 @@ class MapperNodeVisitor extends NodeVisitorAbstract
             $isExclusive = $this->isExclusive($node);
             $hasRisky = $this->hasRisky($node, $originalNamespace, $originalName, $underscoreConversion);
             $statementDetails = $this->generateStatementDetails($node);
-            $componentStmtClasses = $this->generateComponentStmtClasses($node);;
+            $componentStmtClasses = $this->generateComponentStmtClasses($node);
+            ;
 
             $mappedUnit = new MappedUnit(
                 $this->mappedFile->getFilePath(),
@@ -152,11 +153,11 @@ class MapperNodeVisitor extends NodeVisitorAbstract
 
         if ($node instanceof Node\Stmt\If_) {
             return array_map(
-                fn(Node $conditionalNode) => $this->getNodeName($conditionalNode),
-                (new StatementManager())->getAllConditionalStmts($node)
+                fn (Node $conditionalNode) => $this->getNodeName($conditionalNode),
+                (new NodeManager())->getAllConditionalStmts($node)
             );
         } elseif ($node instanceof Node\Stmt\Const_) {
-            return array_map(fn(Node\Const_ $const) => (string)$const->name, $node->consts);
+            return array_map(fn (Node\Const_ $const) => (string)$const->name, $node->consts);
         }
 
         return (string)$node->name;
@@ -220,13 +221,13 @@ class MapperNodeVisitor extends NodeVisitorAbstract
 
         if ($node instanceof Node\Stmt\If_) {
             return array_map(
-                fn(Node $conditionalNode) => $this->generateNewName($conditionalNode, $newNamespace, false, false),
-                (new StatementManager())->getAllConditionalStmts($node)
+                fn (Node $conditionalNode) => $this->generateNewName($conditionalNode, $newNamespace, false, false),
+                (new NodeManager())->getAllConditionalStmts($node)
             );
         } elseif ($node instanceof Node\Stmt\Function_) {
             return (string)$node->name;
         } elseif ($node instanceof Node\Stmt\Const_) {
-            return array_map(fn(Node\Const_ $const) => (string)$const->name, $node->consts);
+            return array_map(fn (Node\Const_ $const) => (string)$const->name, $node->consts);
         } elseif ($node instanceof Node\Expr\FuncCall) {
             return (string)$node->name;
         }
@@ -277,10 +278,10 @@ class MapperNodeVisitor extends NodeVisitorAbstract
             }
 
             return $includesDirPath.'/include.'.substr(
-                    sha1($uuid.implode('', $declarePrefix).$originalFilePath),
-                    0,
-                    7
-                ).'.php';
+                sha1($uuid.implode('', $declarePrefix).$originalFilePath),
+                0,
+                7
+            ).'.php';
         }
 
         $pathFromNamespace = str_replace('\\', '/', $newNamespace);
@@ -339,17 +340,18 @@ class MapperNodeVisitor extends NodeVisitorAbstract
             case $node instanceof Node\Stmt\Const_:
                 return implode(
                     ', ',
-                    array_map(fn(Node $constNode) => $this->generateStatementDetails($constNode), $node->consts)
+                    array_map(fn (Node $constNode) => $this->generateStatementDetails($constNode), $node->consts)
                 );
             case $node instanceof Node\Stmt\If_:
                 return implode(
                     ', ',
                     array_map(
-                        fn(Node $conditionalNode
+                        fn (
+                            Node $conditionalNode
                         ) => (!$conditionalNode instanceof Node\Stmt\If_ ? 'conditional ' : '').$this->generateStatementDetails(
-                                $conditionalNode
-                            ),
-                        (new StatementManager())->getAllConditionalStmts($node)
+                            $conditionalNode
+                        ),
+                        (new NodeManager())->getAllConditionalStmts($node)
                     )
                 );
             default:
@@ -368,12 +370,12 @@ class MapperNodeVisitor extends NodeVisitorAbstract
     {
         if ($node instanceof Node\Stmt\If_) {
             return array_map(
-                fn(Node $conditionalNode) => $this->getStmtClass($conditionalNode),
-                (new StatementManager())->getAllConditionalStmts($node)
+                fn (Node $conditionalNode) => $this->getStmtClass($conditionalNode),
+                (new NodeManager())->getAllConditionalStmts($node)
             );
         } elseif ($node instanceof Node\Stmt\Const_) {
             return array_map(
-                fn(Node $constNode) => $this->getStmtClass($constNode),
+                fn (Node $constNode) => $this->getStmtClass($constNode),
                 $node->consts
             );
         }

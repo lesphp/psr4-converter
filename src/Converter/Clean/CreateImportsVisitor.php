@@ -10,7 +10,7 @@ use PhpParser\NodeFinder;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 
-class AliasCreatorVisitor extends NodeVisitorAbstract
+class CreateImportsVisitor extends NodeVisitorAbstract
 {
     /**
      * @var FullyQualified[]
@@ -65,7 +65,7 @@ class AliasCreatorVisitor extends NodeVisitorAbstract
     {
         $nameManager = new NameManager();
 
-        $this->currentAliases = $nameManager->findCurrentAliases($nodes, true);
+        $this->currentAliases = $nameManager->findNamesInUse($nodes, true);
     }
 
     public function enterNode(Node $node)
@@ -132,13 +132,13 @@ class AliasCreatorVisitor extends NodeVisitorAbstract
 
     private function getAliasFor(int $type, FullyQualified $name): ?string
     {
-        $currentNames = array_map(fn(Node\Name $currentName) => (string)$currentName, $this->currentAliases[$type]);
+        $currentNames = array_map(fn (Node\Name $currentName) => (string)$currentName, $this->currentAliases[$type]);
 
         if (in_array((string)$name, $currentNames, true)) {
             return array_search((string)$name, $currentNames, true);
         }
 
-        $newUseClasses = array_map(fn(Node\Name $newUse) => (string)$newUse, $this->newAliases[$type]);
+        $newUseClasses = array_map(fn (Node\Name $newUse) => (string)$newUse, $this->newAliases[$type]);
 
         if (in_array((string)$name, $newUseClasses, true)) {
             return array_search((string)$name, $newUseClasses, true);

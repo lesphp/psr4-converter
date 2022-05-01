@@ -8,7 +8,7 @@ use PhpParser\NodeFinder;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 
-class RemoveUnusedImportVisitor extends NodeVisitorAbstract
+class RemoveUnusedImportsVisitor extends NodeVisitorAbstract
 {
     /**
      * @var array<int, array<string, Node\Name>>
@@ -33,7 +33,7 @@ class RemoveUnusedImportVisitor extends NodeVisitorAbstract
     {
         $nameManager = new NameManager();
 
-        $this->currentAliases = $nameManager->findCurrentAliases($nodes, false);
+        $this->currentAliases = $nameManager->findNamesInUse($nodes, false);
     }
 
     public function enterNode(Node $node)

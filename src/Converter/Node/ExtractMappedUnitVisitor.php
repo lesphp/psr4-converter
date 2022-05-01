@@ -1,6 +1,6 @@
 <?php
 
-namespace LesPhp\PSR4Converter\Converter\Management;
+namespace LesPhp\PSR4Converter\Converter\Node;
 
 use LesPhp\PSR4Converter\Mapper\Result\MappedUnit;
 use PhpParser\Builder;
@@ -9,9 +9,9 @@ use PhpParser\Node\Name;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 
-class UnitExtractorVisitor extends NodeVisitorAbstract
+class ExtractMappedUnitVisitor extends NodeVisitorAbstract
 {
-    const NEW_CONVERTED_NAME = 'newConvertedName';
+    public const CONVERTED_NAME_ATTRIBUTE = 'convertedName';
 
     private bool $hasDeclaredNamespace;
 
@@ -40,7 +40,7 @@ class UnitExtractorVisitor extends NodeVisitorAbstract
     {
         if ($node instanceof Node\Stmt\GroupUse) {
             $newUses = array_map(
-                fn(Node\Stmt\UseUse $use) => new Node\Stmt\UseUse(
+                fn (Node\Stmt\UseUse $use) => new Node\Stmt\UseUse(
                     Name::concat($node->prefix, $use->name),
                     $use->alias,
                     $use->type
@@ -112,10 +112,10 @@ class UnitExtractorVisitor extends NodeVisitorAbstract
         }
 
         if ($node instanceof Node\Stmt\Namespace_ && $this->isTargetNamespace($node)) {
-            $node->setAttribute(self::NEW_CONVERTED_NAME, $this->mappedUnit->getNewNamespace());
+            $node->setAttribute(self::CONVERTED_NAME_ATTRIBUTE, $this->mappedUnit->getNewNamespace());
         } elseif ($this->isTargetUnit($node) && is_string($this->mappedUnit->getNewName())) {
             /** @var Node\Stmt\Class_|Node\Stmt\Interface_|Node\Stmt\Trait_|Node\Stmt\Enum_|Node\Stmt\Function_|Node\Stmt\Const_ $node */
-            $node->setAttribute(self::NEW_CONVERTED_NAME, $this->mappedUnit->getNewName());
+            $node->setAttribute(self::CONVERTED_NAME_ATTRIBUTE, $this->mappedUnit->getNewName());
         }
 
         return null;
@@ -126,7 +126,7 @@ class UnitExtractorVisitor extends NodeVisitorAbstract
         if (!$this->hasDeclaredNamespace) {
             $newNamespace = (new Builder\Namespace_(null))->getNode();
 
-            $newNamespace->setAttributes([self::NEW_CONVERTED_NAME => $this->mappedUnit->getNewNamespace()]);
+            $newNamespace->setAttributes([self::CONVERTED_NAME_ATTRIBUTE => $this->mappedUnit->getNewNamespace()]);
 
             $nodes = $this->injectIntoNamespace($nodes, $newNamespace);
         }

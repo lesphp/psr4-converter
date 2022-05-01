@@ -1,14 +1,14 @@
 <?php
 
-namespace LesPhp\PSR4Converter\Converter\Management;
+namespace LesPhp\PSR4Converter\Converter\Node;
 
-use LesPhp\PSR4Converter\Converter\Clean\StatementCleaner;
+use LesPhp\PSR4Converter\Converter\Clean\CleanManager;
 use LesPhp\PSR4Converter\Exception\IncompatibleMergeFilesException;
 use PhpParser\Node;
 use PhpParser\NodeFinder;
 use PhpParser\NodeVisitorAbstract;
 
-class StmtsAppendVisitor extends NodeVisitorAbstract
+class AppendNodesVisitor extends NodeVisitorAbstract
 {
     /**
      * @param Node[] $appendStmts
@@ -20,7 +20,7 @@ class StmtsAppendVisitor extends NodeVisitorAbstract
     public function beforeTraverse(array $nodes)
     {
         $nodeFinder = new NodeFinder();
-        $statementCleaner = new StatementCleaner();
+        $cleanManager = new CleanManager();
 
         /** @var Node\Stmt\Declare_|null $currentDeclare */
         $currentDeclare = $nodeFinder->findFirstInstanceOf($nodes, Node\Stmt\Declare_::class);
@@ -45,7 +45,7 @@ class StmtsAppendVisitor extends NodeVisitorAbstract
                     }
                 }
 
-                $this->appendStmts = $statementCleaner->removeNode($this->appendStmts, $appendStmt, false);
+                $this->appendStmts = $cleanManager->removeNode($this->appendStmts, $appendStmt, false);
             }
         }
 
@@ -55,7 +55,7 @@ class StmtsAppendVisitor extends NodeVisitorAbstract
     public function enterNode(Node $node)
     {
         $nodeFinder = new NodeFinder();
-        $statementCleaner = new StatementCleaner();
+        $cleanManager = new CleanManager();
 
         if ($node instanceof Node\Stmt\Namespace_) {
             /** @var Node\Stmt\Namespace_[] $appendNamespaces */
@@ -66,7 +66,7 @@ class StmtsAppendVisitor extends NodeVisitorAbstract
             );
 
             foreach ($appendNamespaces as $appendNamespace) {
-                $appendNamespaceStmts = $statementCleaner->remove(
+                $appendNamespaceStmts = $cleanManager->remove(
                     $appendNamespace->stmts,
                     function (Node $useUseSearch) use ($nodeFinder, $node) {
                         if (!$useUseSearch instanceof Node\Stmt\UseUse) {
@@ -128,10 +128,10 @@ class StmtsAppendVisitor extends NodeVisitorAbstract
 
                 $node->stmts = array_merge($newUses, $node->stmts);
 
-                $appendNamespaceStmts = $statementCleaner->remove($appendNamespaceStmts, $newUsesMatch, false);
+                $appendNamespaceStmts = $cleanManager->remove($appendNamespaceStmts, $newUsesMatch, false);
 
                 $node->stmts = array_merge($node->stmts, $appendNamespaceStmts);
-                $this->appendStmts = $statementCleaner->removeNode($this->appendStmts, $appendNamespace, false);
+                $this->appendStmts = $cleanManager->removeNode($this->appendStmts, $appendNamespace, false);
             }
 
             return $node;

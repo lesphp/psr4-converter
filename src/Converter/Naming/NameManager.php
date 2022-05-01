@@ -25,7 +25,7 @@ class NameManager
 
         $traverser->addVisitor($nameResolver);
         $traverser->addVisitor($parentVisitor);
-        $traverser->addVisitor(new NameReplacerVisitor($mappedResult));
+        $traverser->addVisitor(new ReplaceNameVisitor($mappedResult));
 
         return $traverser->traverse($nodes);
     }
@@ -34,14 +34,14 @@ class NameManager
      * @param Node[] $nodes
      * @return array<int, array<string, Node\Name>>
      */
-    public function findCurrentAliases(array $nodes, bool $includeUseImports): array
+    public function findNamesInUse(array $nodes, bool $includeImports): array
     {
         $traverser = new NodeTraverser();
         $nameResolver = new NameResolver(null, [
             'preserveOriginalNames' => false,
             'replaceNodes' => false,
         ]);
-        $visitor = new CurrentAliasesVisitor($includeUseImports);
+        $visitor = new FindNamesInUseVisitor($includeImports);
 
         $traverser->addVisitor($nameResolver);
         $traverser->addVisitor($visitor);
@@ -62,7 +62,7 @@ class NameManager
             'preserveOriginalNames' => false,
             'replaceNodes' => false,
         ]);
-        $visitor = new NewDefinitionVisitor();
+        $visitor = new FindNewDefinitionsVisitor();
 
         $traverser->addVisitor($nameResolver);
         $traverser->addVisitor($visitor);

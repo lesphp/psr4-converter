@@ -6,7 +6,7 @@ use PhpParser\Node;
 use PhpParser\Node\Name;
 use PhpParser\NodeVisitorAbstract;
 
-class NewDefinitionVisitor extends NodeVisitorAbstract
+class FindNewDefinitionsVisitor extends NodeVisitorAbstract
 {
     /**
      * @var array<int, Name\FullyQualified[]>

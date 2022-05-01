@@ -1,6 +1,6 @@
 <?php
 
-namespace LesPhp\PSR4Converter\Converter\Management;
+namespace LesPhp\PSR4Converter\Converter\Node;
 
 use LesPhp\PSR4Converter\Exception\IncompatibleMergeFilesException;
 use LesPhp\PSR4Converter\Mapper\Result\MappedUnit;
@@ -8,7 +8,7 @@ use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitorAbstract;
 
-class StatementManager extends NodeVisitorAbstract
+class NodeManager extends NodeVisitorAbstract
 {
     /**
      * @param Node[] $nodes
@@ -18,7 +18,7 @@ class StatementManager extends NodeVisitorAbstract
     {
         $traverser = new NodeTraverser();
 
-        $traverser->addVisitor(new UnitExtractorVisitor($mappedUnit));
+        $traverser->addVisitor(new ExtractMappedUnitVisitor($mappedUnit));
 
         return $traverser->traverse($nodes);
     }
@@ -32,7 +32,7 @@ class StatementManager extends NodeVisitorAbstract
     {
         $traverser = new NodeTraverser();
 
-        $traverser->addVisitor(new StmtsAppendVisitor($appendNodes));
+        $traverser->addVisitor(new AppendNodesVisitor($appendNodes));
 
         return $traverser->traverse($currentNodes);
     }
