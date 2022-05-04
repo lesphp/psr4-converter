@@ -17,21 +17,21 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class ConvertCommand extends Command
 {
-    const MAP_FILE_PATH_ARGUMENT = 'map-file';
+    private const MAP_FILE_PATH_ARGUMENT = 'map-file';
 
-    const DESTINATION_DIR_ARGUMENT = 'destination-dir';
+    private const DESTINATION_DIR_ARGUMENT = 'destination-dir';
 
-    const ADDITIONAL_REFACTORING_DIR_OPTION = 'additional-dir';
+    private const ADDITIONAL_REFACTORING_DIR_OPTION = 'additional-dir';
 
-    const ALLOW_RISKY_OPTION = 'allow-risky';
+    private const ALLOW_RISKY_OPTION = 'allow-risky';
 
     protected static $defaultName = 'convert';
 
     protected static $defaultDescription = 'Convert the mapped result';
 
     public function __construct(
-        private ConverterFactoryInterface $converterFactory,
-        private SerializerInterface $resultSerializer
+        private readonly ConverterFactoryInterface $converterFactory,
+        private readonly SerializerInterface $resultSerializer
     ) {
         parent::__construct();
     }

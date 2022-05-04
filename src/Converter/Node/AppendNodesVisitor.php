@@ -17,6 +17,9 @@ class AppendNodesVisitor extends NodeVisitorAbstract
     {
     }
 
+    /**
+     * @throws IncompatibleMergeFilesException
+     */
     public function beforeTraverse(array $nodes)
     {
         $nodeFinder = new NodeFinder();
@@ -35,9 +38,11 @@ class AppendNodesVisitor extends NodeVisitorAbstract
                     /** @var Node\Stmt\DeclareDeclare|null $matchDeclare */
                     $matchDeclare = $nodeFinder->findFirst(
                         $currentDeclare->declares,
-                        fn(Node $searchNode) => $searchNode instanceof Node\Stmt\DeclareDeclare
+                        fn (Node $searchNode) => $searchNode instanceof Node\Stmt\DeclareDeclare
                             && (string)$searchNode->key === (string)$declareToAppend->key
-                            && $searchNode->value?->value === $declareToAppend->value?->value
+                            && property_exists($searchNode->value, 'value')
+                            && property_exists($declareToAppend->value, 'value')
+                            && $searchNode->value->value === $declareToAppend->value->value
                     );
 
                     if ($matchDeclare === null) {
@@ -61,7 +66,7 @@ class AppendNodesVisitor extends NodeVisitorAbstract
             /** @var Node\Stmt\Namespace_[] $appendNamespaces */
             $appendNamespaces = $nodeFinder->find(
                 $this->appendStmts,
-                fn(Node $searchNode) => $searchNode instanceof Node\Stmt\Namespace_ && $searchNode->name?->toString(
+                fn (Node $searchNode) => $searchNode instanceof Node\Stmt\Namespace_ && $searchNode->name?->toString(
                     ) === $node->name?->toString()
             );
 
@@ -78,7 +83,8 @@ class AppendNodesVisitor extends NodeVisitorAbstract
                         /** @var Node\Stmt\Use_[]|Node\Stmt\GroupUse[] $currentUses */
                         $currentUses = $nodeFinder->find(
                             $node,
-                            fn(Node $searchCurrentUse
+                            fn (
+                                Node $searchCurrentUse
                             ) => $searchCurrentUse instanceof Node\Stmt\Use_ || $searchCurrentUse instanceof Node\Stmt\GroupUse
                         );
 
@@ -121,7 +127,8 @@ class AppendNodesVisitor extends NodeVisitorAbstract
                     ['uses']
                 );
 
-                $newUsesMatch = fn(Node $searchUse
+                $newUsesMatch = fn (
+                    Node $searchUse
                 ) => $searchUse instanceof Node\Stmt\Use_ || $searchUse instanceof Node\Stmt\GroupUse;
 
                 $newUses = $nodeFinder->find($appendNamespaceStmts, $newUsesMatch);

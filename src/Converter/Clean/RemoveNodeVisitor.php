@@ -53,9 +53,9 @@ class RemoveNodeVisitor extends NodeVisitorAbstract
                 && count(
                     array_filter(
                         $this->subNodeNames,
-                        fn($subNodeName) => is_countable($parentToRemove->{$subNodeName}) && count(
-                                $parentToRemove->{$subNodeName}
-                            ) > 1
+                        fn ($subNodeName) => is_countable($parentToRemove->{$subNodeName}) && count(
+                            $parentToRemove->{$subNodeName}
+                        ) > 1
                     )
                 ) == 0
             ) {

@@ -2,6 +2,8 @@
 
 namespace LesPhp\PSR4Converter\Converter\Node;
 
+use LesPhp\PSR4Converter\Converter\Naming\NameManager;
+use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
 use LesPhp\PSR4Converter\Mapper\Result\MappedUnit;
 use PhpParser\Builder;
 use PhpParser\Node;
@@ -11,8 +13,6 @@ use PhpParser\NodeVisitorAbstract;
 
 class ExtractMappedUnitVisitor extends NodeVisitorAbstract
 {
-    public const CONVERTED_NAME_ATTRIBUTE = 'convertedName';
-
     private bool $hasDeclaredNamespace;
 
     private bool $reachedTargetUnit;
@@ -23,7 +23,8 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
     private array $declareNodes;
 
     public function __construct(
-        private MappedUnit $mappedUnit
+        private readonly MappedUnit $mappedUnit,
+        private readonly MappedResult $mappedResult
     ) {
     }
 
@@ -33,23 +34,14 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
         $this->reachedTargetUnit = false;
         $this->declareNodes = [];
 
-        return null;
+        $nameManager = new NameManager();
+
+        return $nameManager->replaceFullyQualifiedNames($this->mappedResult, $nodes);
     }
 
     public function enterNode(Node $node)
     {
-        if ($node instanceof Node\Stmt\GroupUse) {
-            $newUses = array_map(
-                fn (Node\Stmt\UseUse $use) => new Node\Stmt\UseUse(
-                    Name::concat($node->prefix, $use->name),
-                    $use->alias,
-                    $use->type
-                ),
-                $node->uses
-            );
-
-            return new Node\Stmt\Use_($newUses, $node->type);
-        } elseif ($node instanceof Node\Stmt\Declare_ && !$this->reachedTargetUnit) {
+        if ($node instanceof Node\Stmt\Declare_ && !$this->reachedTargetUnit) {
             $this->declareNodes[] = $node;
 
             return null;
@@ -112,10 +104,22 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
         }
 
         if ($node instanceof Node\Stmt\Namespace_ && $this->isTargetNamespace($node)) {
-            $node->setAttribute(self::CONVERTED_NAME_ATTRIBUTE, $this->mappedUnit->getNewNamespace());
+            $newName = $this->mappedUnit->getNewNamespace();
+
+            $node->name = $newName !== null ? new Name($newName) : null;
+
+            return $node;
         } elseif ($this->isTargetUnit($node) && is_string($this->mappedUnit->getNewName())) {
-            /** @var Node\Stmt\Class_|Node\Stmt\Interface_|Node\Stmt\Trait_|Node\Stmt\Enum_|Node\Stmt\Function_|Node\Stmt\Const_ $node */
-            $node->setAttribute(self::CONVERTED_NAME_ATTRIBUTE, $this->mappedUnit->getNewName());
+            $newName = match (true) {
+                $node instanceof Node\Stmt\ClassLike,
+                $node instanceof  Node\Stmt\Function_,
+                $node instanceof Node\Const_ => new Node\Identifier($this->mappedUnit->getNewName()),
+                $node instanceof Node\Expr\FuncCall => new Node\Name($this->mappedUnit->getNewName())
+            };
+
+            $node->name = $newName;
+
+            return $node;
         }
 
         return null;
@@ -124,9 +128,7 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
     public function afterTraverse(array $nodes)
     {
         if (!$this->hasDeclaredNamespace) {
-            $newNamespace = (new Builder\Namespace_(null))->getNode();
-
-            $newNamespace->setAttributes([self::CONVERTED_NAME_ATTRIBUTE => $this->mappedUnit->getNewNamespace()]);
+            $newNamespace = (new Builder\Namespace_($this->mappedUnit->getNewNamespace()))->getNode();
 
             $nodes = $this->injectIntoNamespace($nodes, $newNamespace);
         }

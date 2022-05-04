@@ -12,7 +12,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 
 class InspectCommand extends Command
 {
-    const MAP_FILE_PATH_ARGUMENT = 'map-file';
+    private const MAP_FILE_PATH_ARGUMENT = 'map-file';
 
     protected static $defaultName = 'inspect';
 

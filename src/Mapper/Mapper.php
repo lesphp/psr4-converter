@@ -10,32 +10,34 @@ use LesPhp\PSR4Converter\Mapper\Node\NodeManager;
 use LesPhp\PSR4Converter\Mapper\Result\MappedError;
 use LesPhp\PSR4Converter\Mapper\Result\MappedFile;
 use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
-use PhpParser\{Error, Lexer, Node, NodeFinder};
+use PhpParser\Error;
+use PhpParser\Lexer;
+use PhpParser\Node;
+use PhpParser\NodeFinder;
 use PhpParser\Parser;
 
 class Mapper implements MapperInterface
 {
-
-    private ?string $prefixNamespace;
+    private readonly ?string $prefixNamespace;
 
     /**
      * @var string[]
      */
-    private array $ignoreNamespaces;
+    private readonly array $ignoreNamespaces;
 
     /**
      * @param string[] $ignoreNamespaces
      * @throws InvalidNamespaceException
      */
     public function __construct(
-        private KeywordManager $keywordHelper,
-        private Parser $parser,
-        private Lexer $lexer,
-        private MappedResult $mappedResult,
+        private readonly KeywordManager $keywordHelper,
+        private readonly Parser $parser,
+        private readonly Lexer $lexer,
+        private readonly MappedResult $mappedResult,
         ?string $prefixNamespace,
-        private bool $appendNamespace,
-        private bool $underscoreConversion,
-        private bool $ignoreNamespacedUnderscoreConversion,
+        private readonly bool $appendNamespace,
+        private readonly bool $underscoreConversion,
+        private readonly bool $ignoreNamespacedUnderscoreConversion,
         array $ignoreNamespaces
     ) {
         if ($prefixNamespace !== null && !$this->keywordHelper->isValidNamespace($prefixNamespace)) {
@@ -61,9 +63,6 @@ class Mapper implements MapperInterface
         return hash_file('sha256', $filePath);
     }
 
-    /**
-     * @inheritDoc
-     */
     public function map(string $filePath): MappedFile
     {
         $content = file_get_contents($filePath);
@@ -79,7 +78,7 @@ class Mapper implements MapperInterface
 
             $mappedFile->setHasInclude($this->hasInclude($stmts));
 
-            $this->checkNodesConstraints($filePath, $stmts, false);
+            $this->checkNodesConstraints($stmts, false);
         } catch (InvalidRootStatementException $e) {
             $stmt = $e->getStmt();
 
@@ -143,18 +142,17 @@ class Mapper implements MapperInterface
      * @param Node[] $nodes
      * @throws InvalidRootStatementException
      */
-    private function checkNodesConstraints(string $filePath, array $nodes, bool $allowFuncCall): void
+    private function checkNodesConstraints(array $nodes, bool $allowFuncCall): void
     {
         foreach ($nodes as $stmt) {
             $stmt = $stmt instanceof Node\Stmt\Expression ? $stmt->expr : $stmt;
 
             switch (true) {
                 case $stmt instanceof Node\Stmt\Namespace_:
-                    $this->checkNodesConstraints($filePath, (array)$stmt->stmts, false);
+                    $this->checkNodesConstraints((array)$stmt->stmts, false);
                     continue 2;
                 case $stmt instanceof Node\Stmt\If_:
                     $this->checkNodesConstraints(
-                        $filePath,
                         (new NodeManager())->getAllConditionalStmts($stmt),
                         true
                     );
@@ -175,7 +173,6 @@ class Mapper implements MapperInterface
                     continue 2;
                 default:
                     throw new InvalidRootStatementException(
-                        $filePath,
                         $stmt,
                         $this->lexer->getTokens()[$stmt->getStartTokenPos()]
                     );

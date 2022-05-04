@@ -6,7 +6,6 @@ use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\NameResolver;
-use PhpParser\NodeVisitor\ParentConnectingVisitor;
 
 class NameManager
 {
@@ -14,18 +13,16 @@ class NameManager
      * @param Node[] $nodes
      * @return Node[]
      */
-    public function replace(MappedResult $mappedResult, array $nodes): array
+    public function replaceFullyQualifiedNames(MappedResult $mappedResult, array $nodes): array
     {
         $traverser = new NodeTraverser();
         $nameResolver = new NameResolver(null, [
             'preserveOriginalNames' => false,
             'replaceNodes' => false,
         ]);
-        $parentVisitor = new ParentConnectingVisitor();
 
         $traverser->addVisitor($nameResolver);
-        $traverser->addVisitor($parentVisitor);
-        $traverser->addVisitor(new ReplaceNameVisitor($mappedResult));
+        $traverser->addVisitor(new ReplaceFullyQualifiedNameVisitor($mappedResult));
 
         return $traverser->traverse($nodes);
     }

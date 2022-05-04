@@ -24,7 +24,7 @@ class Converter implements ConverterInterface
     private string $destinationPath;
 
     public function __construct(
-        private KeywordManager $keywordHelper,
+        private readonly KeywordManager $keywordHelper,
         Parser $parser,
         string $destinationPath
     ) {
@@ -47,8 +47,7 @@ class Converter implements ConverterInterface
         foreach ($mappedFile->getUnits() as $mappedUnit) {
             $this->addResultToAliases($mappedUnit, $mappedResult->getIncludesDirPath());
 
-            $unitStmts = $this->extractUnitStmts($mappedUnit, $originalFileContent);
-            $unitStmts = $this->replaceNames($unitStmts, $mappedResult);
+            $unitStmts = $this->extractUnitStmts($mappedUnit, $mappedResult, $originalFileContent);
             $unitStmts = $this->clearStmts($unitStmts);
 
             if ($mappedUnit->isExclusive()) {
@@ -69,6 +68,29 @@ class Converter implements ConverterInterface
         }
     }
 
+    public function refactor(MappedResult $mappedResult, string $refactoringDir): void
+    {
+        $finder = (new Finder())
+            ->in($refactoringDir)
+            ->followLinks()
+            ->ignoreDotFiles(false)
+            ->ignoreVCSIgnored(false)
+            ->files()
+            ->name('*.php');
+
+        foreach ($finder as $refactoringFile) {
+            $stmts = $this->parser->parse($refactoringFile->getContents());
+
+            $stmts = $this->fullyQualifyNames($stmts, $mappedResult);
+            $stmts = $this->clearStmts($stmts);
+
+            $this->dumpTargetFile($stmts, $refactoringFile->getRealPath());
+        }
+    }
+
+    /**
+     * @throws IncompatibleMergeFilesException
+     */
     private function addResultToAliases(MappedUnit $mappedUnit, string $includesDirPath): void
     {
         if ($mappedUnit->isCompound()) {
@@ -84,8 +106,8 @@ class Converter implements ConverterInterface
 
         foreach ($componentStmtClasses as $i => $componentStmtClass) {
             if (!$this->isAllowAlias(
-                    $componentStmtClass
-                ) || $newFullQualifiedNames[$i] === $originalFullQualifiedNames[$i]) {
+                $componentStmtClass
+            ) || $newFullQualifiedNames[$i] === $originalFullQualifiedNames[$i]) {
                 continue;
             }
 
@@ -167,24 +189,24 @@ class Converter implements ConverterInterface
     /**
      * @return Node[]
      */
-    private function extractUnitStmts(MappedUnit $mappedUnit, string $originalFileContent): array
+    private function extractUnitStmts(MappedUnit $mappedUnit, MappedResult $mappedResult, string $originalFileContent): array
     {
         $nodeManager = new NodeManager();
 
         $stmts = $this->parser->parse($originalFileContent);
 
-        return $nodeManager->extract($mappedUnit, $stmts);
+        return $nodeManager->extract($mappedUnit, $mappedResult, $stmts);
     }
 
     /**
      * @param Node[] $stmts
      * @return Node[]
      */
-    private function replaceNames(array $stmts, MappedResult $mappedResult): array
+    private function fullyQualifyNames(array $stmts, MappedResult $mappedResult): array
     {
         $nameManager = new NameManager();
 
-        return $nameManager->replace($mappedResult, $stmts);
+        return $nameManager->replaceFullyQualifiedNames($mappedResult, $stmts);
     }
 
     /**
@@ -198,28 +220,5 @@ class Converter implements ConverterInterface
         $stmts = $cleanManager->createAliases($stmts, $this->keywordHelper);
 
         return $cleanManager->removeUnusedImports($stmts);
-    }
-
-    /**
-     * @inheritDoc
-     */
-    public function refactor(MappedResult $mappedResult, string $refactoringDir): void
-    {
-        $finder = (new Finder())
-            ->in($refactoringDir)
-            ->followLinks()
-            ->ignoreDotFiles(false)
-            ->ignoreVCSIgnored(false)
-            ->files()
-            ->name('*.php');
-
-        foreach ($finder as $refactoringFile) {
-            $stmts = $this->parser->parse($refactoringFile->getContents());
-
-            $stmts = $this->replaceNames($stmts, $mappedResult);
-            $stmts = $this->clearStmts($stmts);
-
-            $this->dumpTargetFile($stmts, $refactoringFile->getRealPath());
-        }
     }
 }

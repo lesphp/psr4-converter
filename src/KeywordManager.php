@@ -5,7 +5,8 @@ namespace LesPhp\PSR4Converter;
 class KeywordManager
 {
     /**
-     * @see https://www.php.net/manual/en/reserved.php
+     * @see https://www.php.net/manual/en/reserved.keywords.php
+     * @see https://www.php.net/manual/en/reserved.other-reserved-words.php
      */
     private const RESERVED_KEYWORDS = [
         '__halt_compiler', 'abstract', 'and', 'array', 'as', 'bool', 'break', 'callable',
@@ -21,22 +22,26 @@ class KeywordManager
         'void', 'while','xor', 'yield', 'yield from',
     ];
 
+    /**
+     * @see https://www.php.net/manual/en/reserved.constants.php
+     */
     private const RESERVED_CONSTANTS = [
         'true',
         'false',
         'null',
     ];
 
+    /**
+     * @see https://www.php.net/manual/en/language.oop5.basic.php
+     */
     private const VALID_NAME_REGEX = '/^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*$/';
 
     public function isValidNamespace(string $namespace): bool
     {
-        $invalidParts = array_filter(
-            explode('\\', $namespace),
-            fn($part) => !$this->isValidNamespaceComponent($part)
-        );
+        $parts = explode('\\', $namespace);
+        $invalidParts = array_filter($parts, fn ($part) => !$this->isValidNamespaceComponent($part));
 
-        return count($invalidParts) == 0;
+        return count($invalidParts) == 0 && $parts[0] !== 'PHP';
     }
 
     public function isValidNamespaceComponent(string $name): bool
@@ -62,7 +67,7 @@ class KeywordManager
     public function sanitizeNamespace(string $namespace, string $suffix): string
     {
         $parts = array_map(
-            fn($part) => $this->sanitizeNameWithSuffix($part, $suffix),
+            fn ($part) => $this->sanitizeNameWithSuffix($part, $suffix),
             explode('\\', $namespace)
         );
 

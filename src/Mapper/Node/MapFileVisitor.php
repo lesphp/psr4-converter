@@ -93,7 +93,6 @@ class MapFileVisitor extends NodeVisitorAbstract
             $hasRisky = $this->hasRisky($node, $originalNamespace, $originalName, $underscoreConversion);
             $statementDetails = $this->generateStatementDetails($node);
             $componentStmtClasses = $this->generateComponentStmtClasses($node);
-            ;
 
             $mappedUnit = new MappedUnit(
                 $this->mappedFile->getFilePath(),
@@ -160,7 +159,7 @@ class MapFileVisitor extends NodeVisitorAbstract
             return array_map(fn (Node\Const_ $const) => (string)$const->name, $node->consts);
         }
 
-        return (string)$node->name;
+        return property_exists($node, 'name') ? (string)$node?->name : '';
     }
 
     private function generateNewNamespace(
@@ -204,7 +203,7 @@ class MapFileVisitor extends NodeVisitorAbstract
             return $this->keywordHelper->sanitizeNamespace($prefixNamespace, '_');
         }
 
-        $nodeName = (string)$node->name;
+        $nodeName = property_exists($node, 'name') ? (string)$node?->name: '';
         $psr4FromPsr0 = str_replace('_', '\\', substr($nodeName, 0, strrpos($nodeName, '_')));
         $newNamespace = $prefixNamespace.($psr4FromPsr0 !== '' ? '\\'.$psr4FromPsr0 : '');
 
@@ -232,9 +231,9 @@ class MapFileVisitor extends NodeVisitorAbstract
             return (string)$node->name;
         }
 
-        $nodeName = (string)$node->name;
+        $nodeName = property_exists($node, 'name') ? (string)$node?->name: '';
 
-        if (!$underscoreConversion || strpos($nodeName, '_') === false) {
+        if (!$underscoreConversion || !str_contains($nodeName, '_')) {
             $newName = $nodeName;
         } else {
             $newName = substr($nodeName, strrpos($nodeName, '_') + 1);
@@ -268,7 +267,8 @@ class MapFileVisitor extends NodeVisitorAbstract
 
             foreach ($this->openDeclares as $openDeclare) {
                 foreach ($openDeclare->declares as $declare) {
-                    $declarePrefix[] = $declare->key.$declare->value?->value;
+                    $declarePrefix[] = $declare->key
+                        .(property_exists($declare->value, 'value') ? $declare->value->value : '');
                 }
             }
 
@@ -322,48 +322,35 @@ class MapFileVisitor extends NodeVisitorAbstract
     {
         $node = $node instanceof Node\Stmt\Expression ? $node->expr : $node;
 
-        switch (true) {
-            case $node instanceof Node\Stmt\Class_:
-                return 'class '.$this->getNamespacedName($node);
-            case $node instanceof Node\Stmt\Interface_:
-                return 'interface '.$this->getNamespacedName($node);
-            case $node instanceof Node\Stmt\Trait_:
-                return 'trait '.$this->getNamespacedName($node);
-            case $node instanceof Node\Stmt\Enum_:
-                return 'enum '.$this->getNamespacedName($node);
-            case $node instanceof Node\Stmt\Function_:
-                return 'function '.$this->getNamespacedName($node);
-            case $node instanceof Node\Const_:
-                return 'const '.$this->getNamespacedName($node);
-            case $node instanceof Node\Expr\FuncCall:
-                return 'call '.$node->name;
-            case $node instanceof Node\Stmt\Const_:
-                return implode(
-                    ', ',
-                    array_map(fn (Node $constNode) => $this->generateStatementDetails($constNode), $node->consts)
-                );
-            case $node instanceof Node\Stmt\If_:
-                return implode(
-                    ', ',
-                    array_map(
-                        fn (
-                            Node $conditionalNode
-                        ) => (!$conditionalNode instanceof Node\Stmt\If_ ? 'conditional ' : '').$this->generateStatementDetails(
-                            $conditionalNode
-                        ),
-                        (new NodeManager())->getAllConditionalStmts($node)
-                    )
-                );
-            default:
-                return null;
-        }
+        return match (true) {
+            $node instanceof Node\Stmt\Class_ => 'class '.$this->getNamespacedName($node),
+            $node instanceof Node\Stmt\Interface_ => 'interface '.$this->getNamespacedName($node),
+            $node instanceof Node\Stmt\Trait_ => 'trait '.$this->getNamespacedName($node),
+            $node instanceof Node\Stmt\Enum_ => 'enum '.$this->getNamespacedName($node),
+            $node instanceof Node\Stmt\Function_ => 'function '.$this->getNamespacedName($node),
+            $node instanceof Node\Const_ => 'const '.$this->getNamespacedName($node),
+            $node instanceof Node\Expr\FuncCall => 'call '.$node->name,
+            $node instanceof Node\Stmt\Const_ => implode(
+                ', ',
+                array_map(fn (Node $constNode) => $this->generateStatementDetails($constNode), $node->consts)
+            ),
+            $node instanceof Node\Stmt\If_ => implode(
+                ', ',
+                array_map(
+                    fn (Node $conditionalNode) => (!$conditionalNode instanceof Node\Stmt\If_ ? 'conditional ' : '')
+                        .$this->generateStatementDetails($conditionalNode),
+                    (new NodeManager())->getAllConditionalStmts($node)
+                )
+            ),
+            default => null,
+        };
     }
 
-    private function getNamespacedName(Node $node): Node\Name
+    private function getNamespacedName(Node\Stmt\ClassLike|Node\Stmt\Function_|Node\Const_ $node): Node\Name
     {
         $currentNamespace = $this->nameContext->getNamespace();
 
-        return $node->namespacedName ?? Name::concat($currentNamespace, (string)$node->name);
+        return $node->namespacedName ?? Name::concat($currentNamespace, (string)$node?->name);
     }
 
     private function generateComponentStmtClasses(Node $node): ?array

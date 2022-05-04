@@ -149,13 +149,13 @@ class MapCommand extends Command
                 self::UNDERSCORE_CONVERSION,
                 null,
                 InputOption::VALUE_NONE,
-                'Underscores will means namespace separator. With this option, already namespaced class with name containing underscore may differ from converted constants and functions from same namespace.'
+                'Underscores will means namespace separator. With this option, already namespaced statement with name containing underscore may differ from converted constants and functions from same namespace.'
             )
             ->addOption(
                 self::IGNORE_NAMESPACED_UNDERSCORE_CONVERSION,
                 null,
                 InputOption::VALUE_NONE,
-                'Undercores underscore for already namespaced code.'
+                'Ignore underscores for already namespaced statement.'
             );
     }
 

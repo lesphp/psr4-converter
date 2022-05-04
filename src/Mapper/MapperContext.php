@@ -9,14 +9,14 @@ class MapperContext
      * @param string[] $ignoreNamespaces
      */
     public function __construct(
-        private string $rootSourcePath,
-        private string $includesDirPath,
-        private ?string $prefixNamespace,
-        private bool $appendNamespace,
-        private bool $underscoreConversion,
-        private bool $ignoreNamespacedUnderscoreConversion,
-        private array $ignoreNamespaces,
-        private string $uuid
+        private readonly string $rootSourcePath,
+        private readonly string $includesDirPath,
+        private readonly ?string $prefixNamespace,
+        private readonly bool $appendNamespace,
+        private readonly bool $underscoreConversion,
+        private readonly bool $ignoreNamespacedUnderscoreConversion,
+        private readonly array $ignoreNamespaces,
+        private readonly string $uuid
     ) {
     }
 

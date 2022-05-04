@@ -7,11 +7,10 @@ use Symfony\Component\Filesystem\Filesystem;
 
 class MapperConflictException extends \Exception
 {
-
     public function __construct(
-        private MappedUnit $unit,
-        private MappedUnit $conflictedUnit,
-        private string $sourcePath
+        private readonly MappedUnit $unit,
+        $conflictedUnit,
+        private readonly string $sourcePath
     ) {
         $filesystem = new Filesystem();
 
@@ -33,13 +32,5 @@ class MapperConflictException extends \Exception
     public function getUnit(): MappedUnit
     {
         return $this->unit;
-    }
-
-    /**
-     * @return MappedUnit
-     */
-    public function getConflictedUnit(): MappedUnit
-    {
-        return $this->conflictedUnit;
     }
 }

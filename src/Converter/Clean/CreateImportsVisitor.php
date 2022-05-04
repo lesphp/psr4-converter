@@ -160,7 +160,7 @@ class CreateImportsVisitor extends NodeVisitorAbstract
         $newName = $name->getLast();
 
         while (isset($this->currentAliases[$type][$newName]) || isset($this->newAliases[$type][$newName])) {
-            if (!$tryConcatWithNamespace) {
+            if ($type === Node\Stmt\Use_::TYPE_NORMAL && !$tryConcatWithNamespace) {
                 $newName = implode('', array_slice($name->parts, -2));
 
                 $tryConcatWithNamespace = true;
