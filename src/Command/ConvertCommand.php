@@ -4,7 +4,7 @@ namespace LesPhp\PSR4Converter\Command;
 
 use LesPhp\PSR4Converter\Converter\ConverterFactoryInterface;
 use LesPhp\PSR4Converter\Exception\InvalidHashException;
-use LesPhp\PSR4Converter\Lexer\CustomEmulativeLexer;
+use LesPhp\PSR4Converter\Parser\CustomEmulativeLexer;
 use LesPhp\PSR4Converter\Mapper\Mapper;
 use LesPhp\PSR4Converter\Mapper\Result\Serializer\SerializerInterface;
 use PhpParser\ParserFactory;

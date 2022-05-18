@@ -1,6 +1,6 @@
 <?php
 
-namespace LesPhp\PSR4Converter\Lexer;
+namespace LesPhp\PSR4Converter\Parser;
 
 use PhpParser\Lexer\Emulative;
 use PhpParser\Parser\Tokens;

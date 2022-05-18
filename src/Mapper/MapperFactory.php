@@ -2,8 +2,7 @@
 
 namespace LesPhp\PSR4Converter\Mapper;
 
-use LesPhp\PSR4Converter\KeywordManager;
-use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
+use LesPhp\PSR4Converter\Parser\KeywordManager;
 use PhpParser\Lexer;
 use PhpParser\Parser;
 
@@ -12,7 +11,8 @@ class MapperFactory implements MapperFactoryInterface
     public function createMapper(
         Parser $parser,
         Lexer $lexer,
-        MappedResult $mappedResult,
+        string $srcPath,
+        string $includesDirPath,
         ?string $prefixNamespace,
         bool $appendNamespace,
         bool $underscoreConversion,
@@ -23,7 +23,8 @@ class MapperFactory implements MapperFactoryInterface
             new KeywordManager(),
             $parser,
             $lexer,
-            $mappedResult,
+            $srcPath,
+            $includesDirPath,
             $prefixNamespace,
             $appendNamespace,
             $underscoreConversion,

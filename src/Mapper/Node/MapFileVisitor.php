@@ -2,13 +2,10 @@
 
 namespace LesPhp\PSR4Converter\Mapper\Node;
 
-use LesPhp\PSR4Converter\Exception\MapperConflictException;
-use LesPhp\PSR4Converter\KeywordManager;
 use LesPhp\PSR4Converter\Mapper\MapperContext;
-use LesPhp\PSR4Converter\Mapper\Result\MappedError;
-use LesPhp\PSR4Converter\Mapper\Result\MappedFile;
 use LesPhp\PSR4Converter\Mapper\Result\MappedUnit;
-use PhpParser\NameContext;
+use LesPhp\PSR4Converter\Parser\CustomNameContext;
+use LesPhp\PSR4Converter\Parser\KeywordManager;
 use PhpParser\Node;
 use PhpParser\Node\Name;
 use PhpParser\NodeTraverser;
@@ -25,14 +22,18 @@ class MapFileVisitor extends NodeVisitorAbstract
     private ?int $namespaceEndTokenPos;
 
     /**
+     * @var MappedUnit[]
+     */
+    private array $mappedUnits;
+
+    /**
      * @var Node\Stmt\Declare_[]
      */
     private array $openDeclares;
 
     public function __construct(
-        private readonly MappedFile $mappedFile,
         private readonly MapperContext $mapperContext,
-        private readonly NameContext $nameContext,
+        private readonly CustomNameContext $nameContext,
         private readonly KeywordManager $keywordHelper
     ) {
     }
@@ -42,6 +43,7 @@ class MapFileVisitor extends NodeVisitorAbstract
         $this->namespaceStartTokenPos = null;
         $this->namespaceEndTokenPos = null;
         $this->openDeclares = [];
+        $this->mappedUnits = [];
     }
 
     public function enterNode(Node $node)
@@ -55,7 +57,7 @@ class MapFileVisitor extends NodeVisitorAbstract
 
         if ($this->isValidRootStatement($node)) {
             $nameContext = $this->nameContext;
-            $mapUuid = $this->mapperContext->getUuid();
+            $filePath = $this->mapperContext->getFilePath();
             $vendorNamespace = $this->mapperContext->getPrefixNamespace();
             $includesDirPath = $this->mapperContext->getIncludesDirPath();
             $isAppendNamespace = $this->mapperContext->isAppendNamespace();
@@ -85,8 +87,7 @@ class MapFileVisitor extends NodeVisitorAbstract
                 $newNamespace,
                 $newName,
                 $includesDirPath,
-                $this->mappedFile->getFilePath(),
-                $mapUuid,
+                $filePath,
                 $node
             );
             $isExclusive = $this->isExclusive($node);
@@ -95,7 +96,7 @@ class MapFileVisitor extends NodeVisitorAbstract
             $componentStmtClasses = $this->generateComponentStmtClasses($node);
 
             $mappedUnit = new MappedUnit(
-                $this->mappedFile->getFilePath(),
+                $filePath,
                 $node->getStartLine(),
                 $node->getStartFilePos(),
                 $node->getEndLine(),
@@ -116,13 +117,7 @@ class MapFileVisitor extends NodeVisitorAbstract
                 $componentStmtClasses
             );
 
-            try {
-                $this->mappedFile->checkConflictExclusiveUnits($mappedUnit, $this->mapperContext->getRootSourcePath());
-
-                $this->mappedFile->addMappedUnit($mappedUnit);
-            } catch (MapperConflictException $e) {
-                $this->mappedFile->addError(MappedError::createForConflict($e));
-            }
+            $this->mappedUnits[] = $mappedUnit;
 
             return NodeTraverser::DONT_TRAVERSE_CHILDREN;
         }
@@ -255,7 +250,6 @@ class MapFileVisitor extends NodeVisitorAbstract
         string|array $newName,
         string $includesDirPath,
         string $originalFilePath,
-        string $uuid,
         Node $node
     ): string {
         if (
@@ -278,7 +272,7 @@ class MapFileVisitor extends NodeVisitorAbstract
             }
 
             return $includesDirPath.'/include.'.substr(
-                sha1($uuid.implode('', $declarePrefix).$originalFilePath),
+                sha1(implode('', $declarePrefix).$originalFilePath),
                 0,
                 7
             ).'.php';
@@ -385,5 +379,13 @@ class MapFileVisitor extends NodeVisitorAbstract
         }
 
         return null;
+    }
+
+    /**
+     * @return MappedUnit[]
+     */
+    public function getMappedUnits(): array
+    {
+        return $this->mappedUnits;
     }
 }

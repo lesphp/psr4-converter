@@ -4,7 +4,8 @@ namespace LesPhp\PSR4Converter\Mapper\Result;
 
 use LesPhp\PropertyInfo\TypedArray;
 use LesPhp\PSR4Converter\Exception\MapperConflictException;
-use Ramsey\Uuid\Uuid;
+use Symfony\Component\Serializer\Annotation\Ignore;
+use PhpParser\Node;
 
 class MappedResult
 {
@@ -14,19 +15,40 @@ class MappedResult
     #[TypedArray(type: MappedFile::class, nullable: false)]
     private array $files = [];
 
-    private string $uuid;
+    /**
+     * @var MappedError[]
+     */
+    #[Ignore]
+    private array $errors = [];
 
+    /**
+     * @var array<int, array<string, string>>
+     */
+    #[Ignore]
+    private readonly array $convertedNamesMap;
+
+    /**
+     * @param MappedFile[] $files
+     */
     public function __construct(
         private readonly int $phpParserKind,
         private readonly string $srcPath,
-        private readonly string $includesDirPath
+        private readonly string $includesDirPath,
+        array $files
     ) {
-        $this->uuid = Uuid::uuid4()->toString();
-    }
+        foreach ($files as $mappedFile) {
+            foreach ($mappedFile->getUnits() as $mappedUnit) {
+                try {
+                    $this->checkConflictExclusiveUnits($mappedUnit);
+                } catch (MapperConflictException $e) {
+                    $this->errors[] = MappedError::createForConflict($e);
+                }
+            }
 
-    public function getUuid(): string
-    {
-        return $this->uuid;
+            $this->files[] = $mappedFile;
+        }
+
+        $this->initConvertedNames();
     }
 
     public function getPhpParserKind(): int
@@ -48,15 +70,6 @@ class MappedResult
     public function getIncludesDirPath(): string
     {
         return $this->includesDirPath;
-    }
-
-    /**
-     * @param MappedFile $mappedFile
-     * @return void
-     */
-    public function addMappedFile(MappedFile $mappedFile): void
-    {
-        $this->files[] = $mappedFile;
     }
 
     /**
@@ -86,6 +99,10 @@ class MappedResult
      */
     public function hasError(): bool
     {
+        if (count($this->errors) > 0) {
+            return true;
+        }
+
         foreach ($this->files as $file) {
             if ($file->hasError()) {
                 return true;
@@ -100,7 +117,7 @@ class MappedResult
      */
     public function getErrors(): array
     {
-        $errors = [];
+        $errors = $this->errors;
 
         foreach ($this->files as $file) {
             $errors = array_merge($errors, $file->getErrors());
@@ -166,16 +183,76 @@ class MappedResult
     }
 
     /**
+     * @return array<int, array<string, string>>
+     */
+    public function getConvertedNamesMap(): array
+    {
+        return $this->convertedNamesMap;
+    }
+
+    /**
      * @throws MapperConflictException
      */
-    public function checkConflictExclusiveUnits(MappedUnit $unit): void
+    private function checkConflictExclusiveUnits(MappedUnit $unit): void
     {
         if ($unit->getNewName() === null) {
             return;
         }
 
-        foreach ($this->files as $otherFile) {
-            $otherFile->checkConflictExclusiveUnits($unit, $this->srcPath);
+        foreach ($this->files as $file) {
+            $file->checkConflictExclusiveUnits($unit);
         }
+    }
+
+    private function initConvertedNames(): void
+    {
+        $convertedNamesMap = [
+            Node\Stmt\Use_::TYPE_NORMAL => [],
+            Node\Stmt\Use_::TYPE_FUNCTION => [],
+            Node\Stmt\Use_::TYPE_CONSTANT => [],
+        ];
+
+        foreach ($this->getUnits() as $mappedUnit) {
+            if ($mappedUnit->isCompound()) {
+                $types = array_map(
+                    fn (string $componentStmtClass) => $this->getUseTypeByStmtClass($componentStmtClass),
+                    $mappedUnit->getComponentStmtClasses()
+                );
+                $originalFullQualifiedNames = $mappedUnit->getOriginalFullQualifiedName();
+                $newFullQualifiedNames = $mappedUnit->getNewFullQualifiedName();
+            } else {
+                $types = (array)$this->getUseTypeByStmtClass($mappedUnit->getStmtClass());
+                $originalFullQualifiedNames = (array)$mappedUnit->getOriginalFullQualifiedName();
+                $newFullQualifiedNames = (array)$mappedUnit->getNewFullQualifiedName();
+            }
+
+            array_walk(
+                $types,
+                function ($type, $i) use (&$convertedNamesMap, $newFullQualifiedNames, $originalFullQualifiedNames) {
+                    if ($type === Node\Stmt\Use_::TYPE_UNKNOWN) {
+                        return;
+                    }
+
+                    $convertedNamesMap[$type][$newFullQualifiedNames[$i]] = $originalFullQualifiedNames[$i];
+                }
+            );
+        }
+
+        $this->convertedNamesMap = $convertedNamesMap;
+    }
+
+    private function getUseTypeByStmtClass(string $stmtClass): int
+    {
+        if (is_a($stmtClass, Node\Stmt\Function_::class, true)) {
+            $type = Node\Stmt\Use_::TYPE_FUNCTION;
+        } elseif (is_a($stmtClass, Node\Const_::class, true)) {
+            $type = Node\Stmt\Use_::TYPE_CONSTANT;
+        } elseif (is_a($stmtClass, Node\Stmt\If_::class, true)) {
+            $type = Node\Stmt\Use_::TYPE_UNKNOWN;
+        } else {
+            $type = Node\Stmt\Use_::TYPE_NORMAL;
+        }
+
+        return $type;
     }
 }

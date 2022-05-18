@@ -9,15 +9,20 @@ class MapperContext
      * @param string[] $ignoreNamespaces
      */
     public function __construct(
+        private readonly string $filePath,
         private readonly string $rootSourcePath,
         private readonly string $includesDirPath,
         private readonly ?string $prefixNamespace,
         private readonly bool $appendNamespace,
         private readonly bool $underscoreConversion,
         private readonly bool $ignoreNamespacedUnderscoreConversion,
-        private readonly array $ignoreNamespaces,
-        private readonly string $uuid
+        private readonly array $ignoreNamespaces
     ) {
+    }
+
+    public function getFilePath(): string
+    {
+        return $this->filePath;
     }
 
     public function getRootSourcePath(): string
@@ -56,10 +61,5 @@ class MapperContext
     public function getIgnoreNamespaces(): array
     {
         return $this->ignoreNamespaces;
-    }
-
-    public function getUuid(): string
-    {
-        return $this->uuid;
     }
 }

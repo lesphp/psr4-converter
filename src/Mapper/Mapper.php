@@ -4,12 +4,11 @@ namespace LesPhp\PSR4Converter\Mapper;
 
 use LesPhp\PSR4Converter\Exception\InvalidNamespaceException;
 use LesPhp\PSR4Converter\Exception\InvalidRootStatementException;
-use LesPhp\PSR4Converter\KeywordManager;
 use LesPhp\PSR4Converter\Mapper\Node\MapFileVisitor;
 use LesPhp\PSR4Converter\Mapper\Node\NodeManager;
 use LesPhp\PSR4Converter\Mapper\Result\MappedError;
 use LesPhp\PSR4Converter\Mapper\Result\MappedFile;
-use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
+use LesPhp\PSR4Converter\Parser\KeywordManager;
 use PhpParser\Error;
 use PhpParser\Lexer;
 use PhpParser\Node;
@@ -33,7 +32,8 @@ class Mapper implements MapperInterface
         private readonly KeywordManager $keywordHelper,
         private readonly Parser $parser,
         private readonly Lexer $lexer,
-        private readonly MappedResult $mappedResult,
+        private readonly string $srcPath,
+        private readonly string $includesDirPath,
         ?string $prefixNamespace,
         private readonly bool $appendNamespace,
         private readonly bool $underscoreConversion,
@@ -66,66 +66,52 @@ class Mapper implements MapperInterface
     public function map(string $filePath): MappedFile
     {
         $content = file_get_contents($filePath);
+        $hasInclude = false;
 
         if ($content === false) {
             throw new \RuntimeException(sprintf("Error on read content of file %s", $filePath));
         }
 
-        $mappedFile = new MappedFile($filePath);
-
         try {
             $stmts = $this->parser->parse($content);
-
-            $mappedFile->setHasInclude($this->hasInclude($stmts));
+            $hasInclude = $this->hasInclude($stmts);
 
             $this->checkNodesConstraints($stmts, false);
         } catch (InvalidRootStatementException $e) {
             $stmt = $e->getStmt();
-
-            $mappedFile->addError(
-                new MappedError(
-                    $filePath,
-                    $stmt->getStartLine(),
-                    $stmt->getStartFilePos(),
-                    $stmt->getEndLine(),
-                    $stmt->getEndFilePos(),
-                    $e->getMessage()
-                )
+            $mappedError = new MappedError(
+                $filePath,
+                $stmt->getStartLine(),
+                $stmt->getStartFilePos(),
+                $stmt->getEndLine(),
+                $stmt->getEndFilePos(),
+                $e->getMessage()
             );
 
-            return $mappedFile;
+            return new MappedFile($filePath, $hasInclude, [], [$mappedError]);
         } catch (Error $e) {
             $startPos = $e->getAttributes()['startFilePos'] ?? -1;
             $endPos = $e->getAttributes()['endFilePos'] ?? -1;
-            $mappedFile->addError(
-                new MappedError(
-                    $filePath,
-                    $e->getStartLine(),
-                    $startPos,
-                    $e->getEndLine(),
-                    $endPos,
-                    $e->getMessage()
-                )
-            );
+            $mappedError = new MappedError($filePath, $e->getStartLine(), $startPos, $e->getEndLine(), $endPos, $e->getMessage());
 
-            return $mappedFile;
+            return new MappedFile($filePath, $hasInclude, [], [$mappedError]);
         }
 
         $nodeManager = new NodeManager();
         $mapperContext = new MapperContext(
-            $this->mappedResult->getSrcPath(),
-            $this->mappedResult->getIncludesDirPath(),
+            $filePath,
+            $this->srcPath,
+            $this->includesDirPath,
             $this->prefixNamespace,
             $this->appendNamespace,
             $this->underscoreConversion,
             $this->ignoreNamespacedUnderscoreConversion,
-            $this->ignoreNamespaces,
-            $this->mappedResult->getUuid()
+            $this->ignoreNamespaces
         );
 
-        $nodeManager->mapFile($mappedFile, $mapperContext, $stmts);
+        $mappedUnits = $nodeManager->mapFile($mapperContext, $stmts);
 
-        return $mappedFile;
+        return new MappedFile($filePath, $hasInclude, $mappedUnits);
     }
 
     /**

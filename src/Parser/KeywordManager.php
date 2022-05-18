@@ -1,6 +1,6 @@
 <?php
 
-namespace LesPhp\PSR4Converter;
+namespace LesPhp\PSR4Converter\Parser;
 
 class KeywordManager
 {

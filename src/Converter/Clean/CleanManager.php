@@ -2,7 +2,10 @@
 
 namespace LesPhp\PSR4Converter\Converter\Clean;
 
-use LesPhp\PSR4Converter\KeywordManager;
+use LesPhp\PSR4Converter\Converter\Doc\PhpDocNodeTraverserVisitor;
+use LesPhp\PSR4Converter\Converter\Doc\Visitor\ReplaceNameWithImportVisitor;
+use LesPhp\PSR4Converter\Parser\CustomNameResolver;
+use LesPhp\PSR4Converter\Parser\KeywordManager;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 use PhpParser\NodeVisitor\ParentConnectingVisitor;
@@ -16,8 +19,32 @@ class CleanManager
     public function createAliases(array $nodes, KeywordManager $keywordHelper): array
     {
         $traverser = new NodeTraverser();
+        $nameResolver = new CustomNameResolver([
+            'preserveOriginalNames' => false,
+            'replaceNodes' => false,
+        ]);
 
-        $traverser->addVisitor(new CreateImportsVisitor($keywordHelper));
+        $traverser->addVisitor($nameResolver);
+        $traverser->addVisitor(new CreateImportsVisitor($keywordHelper, $nameResolver->getNameContext()));
+
+        return $traverser->traverse($nodes);
+    }
+
+    /**
+     * @param Node[] $nodes
+     * @return Node[]
+     */
+    public function createAliasesFoDoc(array $nodes): array
+    {
+        $traverser = new NodeTraverser();
+        $nameResolver = new CustomNameResolver([
+            'preserveOriginalNames' => false,
+            'replaceNodes' => false,
+        ]);
+        $replacePhpDocVisitor = new ReplaceNameWithImportVisitor($nameResolver->getNameContext());
+
+        $traverser->addVisitor($nameResolver);
+        $traverser->addVisitor(new PhpDocNodeTraverserVisitor($replacePhpDocVisitor));
 
         return $traverser->traverse($nodes);
     }

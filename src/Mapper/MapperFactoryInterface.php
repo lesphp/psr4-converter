@@ -15,7 +15,8 @@ interface MapperFactoryInterface
     public function createMapper(
         Parser $parser,
         Lexer $lexer,
-        MappedResult $mappedResult,
+        string $srcPath,
+        string $includesDirPath,
         ?string $prefixNamespace,
         bool $appendNamespace,
         bool $underscoreConversion,

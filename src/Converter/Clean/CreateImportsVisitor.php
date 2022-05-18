@@ -3,7 +3,8 @@
 namespace LesPhp\PSR4Converter\Converter\Clean;
 
 use LesPhp\PSR4Converter\Converter\Naming\NameManager;
-use LesPhp\PSR4Converter\KeywordManager;
+use LesPhp\PSR4Converter\Parser\CustomNameContext;
+use LesPhp\PSR4Converter\Parser\KeywordManager;
 use PhpParser\Node;
 use PhpParser\Node\Name\FullyQualified;
 use PhpParser\NodeFinder;
@@ -30,7 +31,8 @@ class CreateImportsVisitor extends NodeVisitorAbstract
     private bool $hasNamespace;
 
     public function __construct(
-        private readonly KeywordManager $keywordHelper
+        private readonly KeywordManager $keywordHelper,
+        private readonly CustomNameContext $nameContext
     ) {
     }
 
@@ -109,6 +111,11 @@ class CreateImportsVisitor extends NodeVisitorAbstract
             $node instanceof FullyQualified
             && !in_array($node, $this->importedNames, true)
         ) {
+            // Same namespace
+            if ((string)$node->slice(0, -1) === (string)$this->nameContext->getNamespace()) {
+                return new Node\Name($node->getLast(), $node->getAttributes());
+            }
+
             return $this->replaceNameWithAlias(Node\Stmt\Use_::TYPE_NORMAL, $node);
         }
 
@@ -170,6 +177,7 @@ class CreateImportsVisitor extends NodeVisitorAbstract
         }
 
         $this->newAliases[$type][$newName] = $name;
+        $this->nameContext->addAlias($name, $newName, $type);
 
         return $newName;
     }

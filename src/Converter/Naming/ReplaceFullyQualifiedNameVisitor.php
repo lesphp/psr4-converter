@@ -17,14 +17,8 @@ class ReplaceFullyQualifiedNameVisitor extends NodeVisitorAbstract
      */
     private array $replacedGroupUses;
 
-    /**
-     * @var array<int, array<string, string>>
-     */
-    private readonly array $convertedNamesMap;
-
-    public function __construct(MappedResult $mappedResult)
+    public function __construct(private readonly MappedResult $mappedResult)
     {
-        $this->convertedNamesMap = $this->getConvertedNames($mappedResult);
     }
 
     public function beforeTraverse(array $nodes)
@@ -78,8 +72,13 @@ class ReplaceFullyQualifiedNameVisitor extends NodeVisitorAbstract
             return null;
         }
 
+        if ($node->isSpecialClassName()) {
+            return null;
+        }
+
         $isFullyQualified = $node->isFullyQualified();
         $isResolvedName = $node->hasAttribute('resolvedName');
+        $convertedNamesMap = $this->mappedResult->getConvertedNamesMap();
 
         if (isset($this->typeByName[$node]) && ($isFullyQualified || $isResolvedName)) {
             $searchName = $isFullyQualified
@@ -87,13 +86,13 @@ class ReplaceFullyQualifiedNameVisitor extends NodeVisitorAbstract
                 : $node->getAttribute('resolvedName');
             $newName = array_search(
                 (string)$searchName,
-                $this->convertedNamesMap[$this->typeByName[$node]]
+                $convertedNamesMap[$this->typeByName[$node]]
             );
 
             if ($newName !== false) {
-                return new FullyQualified($newName);
-            } elseif (!$searchName->isSpecialClassName()) {
-                return new FullyQualified($searchName);
+                return new FullyQualified($newName, $node->getAttributes());
+            } else {
+                return new FullyQualified($searchName, $node->getAttributes());
             }
         }
 
@@ -105,12 +104,14 @@ class ReplaceFullyQualifiedNameVisitor extends NodeVisitorAbstract
      */
     private function replaceImportNames(array $useUses, int $type): void
     {
+        $convertedNamesMap = $this->mappedResult->getConvertedNamesMap();
+
         foreach ($useUses as $useUse) {
             $this->typeByName[$useUse->name] = $type;
-            $newName = array_search((string)$useUse->name, $this->convertedNamesMap[$type], true);
+            $newName = array_search((string)$useUse->name, $convertedNamesMap[$type], true);
 
             if ($newName !== false) {
-                $useUse->name = new Name($newName);
+                $useUse->name = new Name($newName, $useUse->name->getAttributes());
             }
         }
     }
@@ -143,60 +144,5 @@ class ReplaceFullyQualifiedNameVisitor extends NodeVisitorAbstract
         }
 
         return new Name($prefixParts);
-    }
-
-    /**
-     * @return array<int, array<string, string>>
-     */
-    private function getConvertedNames(MappedResult $mappedResult): array
-    {
-        $convertedNamesMap = [
-            Node\Stmt\Use_::TYPE_NORMAL => [],
-            Node\Stmt\Use_::TYPE_FUNCTION => [],
-            Node\Stmt\Use_::TYPE_CONSTANT => [],
-        ];
-
-        foreach ($mappedResult->getUnits() as $mappedUnit) {
-            if ($mappedUnit->isCompound()) {
-                $types = array_map(
-                    fn (string $componentStmtClass) => $this->getUseTypeByStmtClass($componentStmtClass),
-                    $mappedUnit->getComponentStmtClasses()
-                );
-                $originalFullQualifiedNames = $mappedUnit->getOriginalFullQualifiedName();
-                $newFullQualifiedNames = $mappedUnit->getNewFullQualifiedName();
-            } else {
-                $types = (array)$this->getUseTypeByStmtClass($mappedUnit->getStmtClass());
-                $originalFullQualifiedNames = (array)$mappedUnit->getOriginalFullQualifiedName();
-                $newFullQualifiedNames = (array)$mappedUnit->getNewFullQualifiedName();
-            }
-
-            array_walk(
-                $types,
-                function ($type, $i) use (&$convertedNamesMap, $newFullQualifiedNames, $originalFullQualifiedNames) {
-                    if ($type === Node\Stmt\Use_::TYPE_UNKNOWN) {
-                        return;
-                    }
-
-                    $convertedNamesMap[$type][$newFullQualifiedNames[$i]] = $originalFullQualifiedNames[$i];
-                }
-            );
-        }
-
-        return $convertedNamesMap;
-    }
-
-    private function getUseTypeByStmtClass(string $stmtClass): int
-    {
-        if (is_a($stmtClass, Node\Stmt\Function_::class, true)) {
-            $type = Node\Stmt\Use_::TYPE_FUNCTION;
-        } elseif (is_a($stmtClass, Node\Const_::class, true)) {
-            $type = Node\Stmt\Use_::TYPE_CONSTANT;
-        } elseif (is_a($stmtClass, Node\Stmt\If_::class, true)) {
-            $type = Node\Stmt\Use_::TYPE_UNKNOWN;
-        } else {
-            $type = Node\Stmt\Use_::TYPE_NORMAL;
-        }
-
-        return $type;
     }
 }

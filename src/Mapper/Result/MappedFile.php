@@ -11,7 +11,17 @@ class MappedFile
 {
     private string $hash;
 
-    private bool $hasInclude;
+    /**
+     * @var MappedUnit[]
+     */
+    #[Ignore]
+    private array $risky = [];
+
+    /**
+     * @var MappedUnit[]
+     */
+    #[Ignore]
+    private array $noRisky = [];
 
     /**
      * @var MappedUnit[]
@@ -20,15 +30,33 @@ class MappedFile
     private array $units = [];
 
     /**
-     * @var MappedError[]
+     * @param MappedUnit[] $units
+     * @param MappedError[] $errors
      */
-    #[Ignore]
-    private array $errors = [];
-
-    public function __construct(private readonly string $filePath)
-    {
-        $this->hasInclude = false;
+    public function __construct(
+        private readonly string $filePath,
+        private readonly bool $hasInclude,
+        array $units,
+        #[Ignore]
+        private array $errors = []
+    ) {
         $this->hash = Mapper::calculateHash($filePath);
+
+        foreach ($units as $mappedUnit) {
+            try {
+                $this->checkConflictExclusiveUnits($mappedUnit);
+
+                $this->units[] = $mappedUnit;
+
+                if ($mappedUnit->isRisky()) {
+                    $this->risky[] = $mappedUnit;
+                } else {
+                    $this->noRisky[] = $mappedUnit;
+                }
+            } catch (MapperConflictException $e) {
+                $this->errors[] = MappedError::createForConflict($e);
+            }
+        }
     }
 
     /**
@@ -52,34 +80,12 @@ class MappedFile
         return $this->hasInclude;
     }
 
-    public function setHasInclude(bool $hasInclude): void
-    {
-        $this->hasInclude = $hasInclude;
-    }
-
     /**
      * @return MappedUnit[]
      */
     public function getUnits(): array
     {
         return $this->units;
-    }
-
-    /**
-     * @throws MapperConflictException
-     */
-    public function addMappedUnit(MappedUnit $unit): void
-    {
-        $this->units[] = $unit;
-    }
-
-    public function removeMappedUnit(MappedUnit $unitToRemove): void
-    {
-        foreach ($this->units as $i => $unit) {
-            if ($unit === $unitToRemove) {
-                unset($this->units[$i]);
-            }
-        }
     }
 
     /**
@@ -95,23 +101,12 @@ class MappedFile
         return count($this->errors) > 0;
     }
 
-    public function addError(MappedError $error): void
-    {
-        $this->errors[] = $error;
-    }
-
     /**
      * @return bool
      */
     public function hasRisky(): bool
     {
-        foreach ($this->units as $unit) {
-            if ($unit->isRisky()) {
-                return true;
-            }
-        }
-
-        return false;
+        return count($this->risky) > 0;
     }
 
     /**
@@ -119,15 +114,7 @@ class MappedFile
      */
     public function getRisky(): array
     {
-        $risky = [];
-
-        foreach ($this->units as $unit) {
-            if ($unit->isRisky()) {
-                $risky[] = $unit;
-            }
-        }
-
-        return $risky;
+        return $this->risky;
     }
 
     /**
@@ -135,21 +122,13 @@ class MappedFile
      */
     public function getNoRisky(): array
     {
-        $noRisky = [];
-
-        foreach ($this->units as $unit) {
-            if (!$unit->isRisky()) {
-                $noRisky[] = $unit;
-            }
-        }
-
-        return $noRisky;
+        return $this->noRisky;
     }
 
     /**
      * @throws MapperConflictException
      */
-    public function checkConflictExclusiveUnits(MappedUnit $unitForCheck, string $sourcePath): void
+    public function checkConflictExclusiveUnits(MappedUnit $unitForCheck): void
     {
         if ($unitForCheck->getNewName() === null) {
             return;
@@ -168,7 +147,7 @@ class MappedFile
                 $unit->getNewNamespace() === $unitForCheck->getNewNamespace()
                 && count(array_intersect($originalNames, $newNames)) > 0
             ) {
-                throw new MapperConflictException($unitForCheck, $unit, $sourcePath);
+                throw new MapperConflictException($unitForCheck, $unit);
             }
         }
     }

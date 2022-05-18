@@ -3,13 +3,13 @@
 namespace LesPhp\PSR4Converter\Converter;
 
 use LesPhp\PSR4Converter\Converter\Clean\CleanManager;
-use LesPhp\PSR4Converter\Converter\Node\NodeManager;
 use LesPhp\PSR4Converter\Converter\Naming\NameManager;
+use LesPhp\PSR4Converter\Converter\Node\NodeManager;
 use LesPhp\PSR4Converter\Exception\IncompatibleMergeFilesException;
-use LesPhp\PSR4Converter\KeywordManager;
 use LesPhp\PSR4Converter\Mapper\Result\MappedFile;
 use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
 use LesPhp\PSR4Converter\Mapper\Result\MappedUnit;
+use LesPhp\PSR4Converter\Parser\KeywordManager;
 use PhpParser\Node;
 use PhpParser\Parser;
 use PhpParser\PrettyPrinter;
@@ -218,6 +218,7 @@ class Converter implements ConverterInterface
         $cleanManager = new CleanManager();
 
         $stmts = $cleanManager->createAliases($stmts, $this->keywordHelper);
+        $stmts = $cleanManager->createAliasesFoDoc($stmts);
 
         return $cleanManager->removeUnusedImports($stmts);
     }

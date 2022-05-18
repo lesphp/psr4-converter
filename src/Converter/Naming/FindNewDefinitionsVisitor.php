@@ -28,17 +28,20 @@ class FindNewDefinitionsVisitor extends NodeVisitorAbstract
     {
         if ($node instanceof Node\Stmt\Function_) {
             $this->newDefinitions[Node\Stmt\Use_::TYPE_FUNCTION][] = new Name\FullyQualified(
-                $node->namespacedName ?? $node->name
+                $node->namespacedName ?? $node->name,
+                $node->name->getAttributes()
             );
         } elseif ($node instanceof Node\Stmt\Const_) {
             foreach ($node->consts as $const) {
                 $this->newDefinitions[Node\Stmt\Use_::TYPE_CONSTANT][] = new Name\FullyQualified(
-                    $const->namespacedName ?? $const->name
+                    $const->namespacedName ?? $const->name,
+                    $const->name->getAttributes()
                 );
             }
         } elseif ($node instanceof Node\Stmt\ClassLike) {
             $this->newDefinitions[Node\Stmt\Use_::TYPE_NORMAL][] = new Name\FullyQualified(
-                $node->namespacedName ?? $node->name
+                $node->namespacedName ?? $node->name,
+                $node->name->getAttributes()
             );
         }
 

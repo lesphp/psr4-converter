@@ -106,15 +106,17 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
         if ($node instanceof Node\Stmt\Namespace_ && $this->isTargetNamespace($node)) {
             $newName = $this->mappedUnit->getNewNamespace();
 
-            $node->name = $newName !== null ? new Name($newName) : null;
+            $node->name = $newName !== null
+                ? new Name($newName, $node->name !== null ? $node->name->getAttributes() : [])
+                : null;
 
             return $node;
         } elseif ($this->isTargetUnit($node) && is_string($this->mappedUnit->getNewName())) {
             $newName = match (true) {
                 $node instanceof Node\Stmt\ClassLike,
                 $node instanceof  Node\Stmt\Function_,
-                $node instanceof Node\Const_ => new Node\Identifier($this->mappedUnit->getNewName()),
-                $node instanceof Node\Expr\FuncCall => new Node\Name($this->mappedUnit->getNewName())
+                $node instanceof Node\Const_ => new Node\Identifier($this->mappedUnit->getNewName(), $node->name->getAttributes()),
+                $node instanceof Node\Expr\FuncCall => new Node\Name($this->mappedUnit->getNewName(), $node->name->getAttributes())
             };
 
             $node->name = $newName;
@@ -180,9 +182,16 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
     {
         $newNodes = [];
         $declares = [];
+        $docs = [];
 
         foreach ($nodes as $node) {
             if ($node instanceof Node\Stmt\Declare_) {
+                $doc = $node->getDocComment();
+
+                if ($doc !== null) {
+                    $docs[] = $doc;
+                }
+
                 foreach ($node->declares as $declare) {
                     $declares[(string)$declare->key] = $declare;
                 }
@@ -194,7 +203,13 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
         }
 
         if (count($declares) > 0) {
-            array_unshift($newNodes, new Node\Stmt\Declare_(array_values($declares)));
+            $newDeclare = new Node\Stmt\Declare_(
+                array_values($declares),
+                null,
+                ['comments' => $docs]
+            );
+
+            array_unshift($newNodes, $newDeclare);
         }
 
         return $newNodes;

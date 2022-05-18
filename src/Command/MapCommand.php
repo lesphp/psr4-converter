@@ -5,10 +5,11 @@ namespace LesPhp\PSR4Converter\Command;
 use LesPhp\PSR4Converter\Console\MapperDumper;
 use LesPhp\PSR4Converter\Exception\InvalidNamespaceException;
 use LesPhp\PSR4Converter\Exception\MapperConflictException;
-use LesPhp\PSR4Converter\Lexer\CustomEmulativeLexer;
+use LesPhp\PSR4Converter\Parser\CustomEmulativeLexer;
 use LesPhp\PSR4Converter\Mapper\Node\MapFileVisitor;
 use LesPhp\PSR4Converter\Mapper\MapperFactoryInterface;
 use LesPhp\PSR4Converter\Mapper\Result\MappedError;
+use LesPhp\PSR4Converter\Mapper\Result\MappedFile;
 use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
 use LesPhp\PSR4Converter\Mapper\Result\Serializer\SerializerInterface;
 use PhpParser\ParserFactory;
@@ -219,11 +220,11 @@ class MapCommand extends Command
             $finder->notPath($ignorePath);
         }
 
-        $mappedResult = new MappedResult($phpParserKind, $srcRealPath, $includeDirPath);
         $mapper = $this->mapperFactory->createMapper(
             $parser,
             $lexer,
-            $mappedResult,
+            $srcRealPath,
+            $includeDirPath,
             $prefixNamespace,
             $isAppendNamespace,
             $underscoreConversion,
@@ -231,20 +232,14 @@ class MapCommand extends Command
             $ignoreNamespaces
         );
 
+        /** @var MappedFile[] $mappedFiles */
+        $mappedFiles = [];
+
         foreach ($finder as $file) {
-            $mappedFile = $mapper->map($file->getRealPath());
-
-            foreach ($mappedFile->getUnits() as $mappedUnit) {
-                try {
-                    $mappedResult->checkConflictExclusiveUnits($mappedUnit);
-                } catch (MapperConflictException $e) {
-                    $mappedFile->addError(MappedError::createForConflict($e));
-                    $mappedFile->removeMappedUnit($mappedUnit);
-                }
-            }
-
-            $mappedResult->addMappedFile($mappedFile);
+            $mappedFiles[] = $mapper->map($file->getRealPath());
         }
+
+        $mappedResult = new MappedResult($phpParserKind, $srcRealPath, $includeDirPath, $mappedFiles);
 
         if ($mappedResult->hasError()) {
             $errorOutput->writeln('There are errors on conversions attempts, fix it.');

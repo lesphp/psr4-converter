@@ -2,7 +2,7 @@
 
 namespace LesPhp\PSR4Converter\Converter;
 
-use LesPhp\PSR4Converter\KeywordManager;
+use LesPhp\PSR4Converter\Parser\KeywordManager;
 use PhpParser\Parser;
 
 class ConverterFactory implements ConverterFactoryInterface
