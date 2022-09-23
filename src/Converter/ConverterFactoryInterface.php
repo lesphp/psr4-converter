@@ -6,5 +6,5 @@ use PhpParser\Parser;
 
 interface ConverterFactoryInterface
 {
-    public function createConverter(Parser $parser, string $destinationPath): ConverterInterface;
+    public function createConverter(Parser $parser, string $destinationPath, bool $ignoreVendorNamespacePath): ConverterInterface;
 }

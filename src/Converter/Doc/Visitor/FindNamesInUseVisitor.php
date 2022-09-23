@@ -64,13 +64,11 @@ class FindNamesInUseVisitor extends AbstractPhpDocNodeVisitor
                     $this->currentAliases[Use_::TYPE_CONSTANT][$name->getFirst()] = $this->nameContext->getResolvedName($name, Use_::TYPE_CONSTANT) ?? $name;
                 }
             }
-        } elseif ($node instanceof GenericTagValueNode) {
-            if (!$this->isFullyQualifiedName($node->value)) {
-                $name = new Name($node->value);
+        } elseif ($node instanceof GenericTagValueNode && !empty($node->value) && !$this->isFullyQualifiedName($node->value)) {
+            $name = new Name($node->value);
 
-                if ($this->nameContext->aliasExists($name->getFirst(), Use_::TYPE_NORMAL)) {
-                    $this->currentAliases[Use_::TYPE_NORMAL][$name->getFirst()] = $this->nameContext->getResolvedClassName($name);
-                }
+            if ($this->nameContext->aliasExists($name->getFirst(), Use_::TYPE_NORMAL)) {
+                $this->currentAliases[Use_::TYPE_NORMAL][$name->getFirst()] = $this->nameContext->getResolvedClassName($name);
             }
         }
 

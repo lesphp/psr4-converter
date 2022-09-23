@@ -90,6 +90,7 @@ class MapFileVisitor extends NodeVisitorAbstract
                 $filePath,
                 $node
             );
+            $targetFileWithoutVendor = $this->removeVendorPath($targetFile, $vendorNamespace);
             $isExclusive = $this->isExclusive($node);
             $hasRisky = $this->hasRisky($node, $originalNamespace, $originalName, $underscoreConversion);
             $statementDetails = $this->generateStatementDetails($node);
@@ -110,6 +111,7 @@ class MapFileVisitor extends NodeVisitorAbstract
                 $newNamespace,
                 $newName,
                 $targetFile,
+                $targetFileWithoutVendor,
                 $this->getStmtClass($node),
                 $isExclusive,
                 $hasRisky,
@@ -281,6 +283,13 @@ class MapFileVisitor extends NodeVisitorAbstract
         $pathFromNamespace = str_replace('\\', '/', $newNamespace);
 
         return ltrim($pathFromNamespace.'/'.$newName.'.php', '/');
+    }
+
+    private function removeVendorPath(string $targetFile, ?string $vendorNamespace): string
+    {
+        $vendorPath = str_replace('\\', '/', $vendorNamespace);
+
+        return ltrim(substr($targetFile, strlen($vendorPath)), '/');
     }
 
     private function isExclusive(Node $node): bool

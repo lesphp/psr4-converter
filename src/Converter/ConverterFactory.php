@@ -7,8 +7,8 @@ use PhpParser\Parser;
 
 class ConverterFactory implements ConverterFactoryInterface
 {
-    public function createConverter(Parser $parser, string $destinationPath): ConverterInterface
+    public function createConverter(Parser $parser, string $destinationPath, bool $ignoreVendorNamespacePath): ConverterInterface
     {
-        return new Converter(new KeywordManager(), $parser, $destinationPath);
+        return new Converter(new KeywordManager(), $parser, $destinationPath, $ignoreVendorNamespacePath);
     }
 }

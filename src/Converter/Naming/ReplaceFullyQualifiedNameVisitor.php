@@ -3,6 +3,7 @@
 namespace LesPhp\PSR4Converter\Converter\Naming;
 
 use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
+use LesPhp\PSR4Converter\Parser\CustomNameContext;
 use PhpParser\Node;
 use PhpParser\Node\Name;
 use PhpParser\Node\Name\FullyQualified;
@@ -17,7 +18,10 @@ class ReplaceFullyQualifiedNameVisitor extends NodeVisitorAbstract
      */
     private array $replacedGroupUses;
 
-    public function __construct(private readonly MappedResult $mappedResult)
+    public function __construct(
+        private readonly MappedResult $mappedResult,
+        private readonly CustomNameContext $nameContext
+    )
     {
     }
 
@@ -107,11 +111,41 @@ class ReplaceFullyQualifiedNameVisitor extends NodeVisitorAbstract
         $convertedNamesMap = $this->mappedResult->getConvertedNamesMap();
 
         foreach ($useUses as $useUse) {
-            $this->typeByName[$useUse->name] = $type;
-            $newName = array_search((string)$useUse->name, $convertedNamesMap[$type], true);
+            $oldName = $useUse->name;
+            $oldAlias = $useUse->alias !== null ? $useUse->alias : $oldName->getLast();
+            $useUseType = $type !== Node\Stmt\Use_::TYPE_UNKNOWN ? $type : $useUse->type;
+            $this->typeByName[$oldName] = $useUseType;
+            $newName = array_search((string)$oldName, $convertedNamesMap[$useUseType], true);
 
             if ($newName !== false) {
                 $useUse->name = new Name($newName, $useUse->name->getAttributes());
+                $newAliasDefault = $useUse->name->getLast();
+
+                $this->nameContext->removeAlias($oldAlias, $type);
+
+                if ($useUse->alias === null) {
+                    $newAlias = $newAliasDefault;
+                    $tryConcatWithNamespace = false;
+                    $newNameCounter = 0;
+
+                    while ($this->nameContext->aliasExists($newAlias, $type)) {
+                        if ($type === Node\Stmt\Use_::TYPE_NORMAL && !$tryConcatWithNamespace) {
+                            $newAlias = implode('', array_slice($useUse->name->parts, -2));
+
+                            $tryConcatWithNamespace = true;
+                        } else {
+                            $newAlias = $newAliasDefault . ++$newNameCounter;
+                        }
+                    }
+
+                    if ($newAlias !== $newAliasDefault) {
+                        $useUse->alias = new Node\Identifier($newAlias);
+                    }
+                } else {
+                    $newAlias = (string) $useUse->alias;
+                }
+
+                $this->nameContext->addAlias($useUse->name, $newAlias, $type);
             }
         }
     }

@@ -5,6 +5,7 @@ namespace LesPhp\PSR4Converter\Converter\Node;
 use LesPhp\PSR4Converter\Converter\Naming\NameManager;
 use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
 use LesPhp\PSR4Converter\Mapper\Result\MappedUnit;
+use LesPhp\PSR4Converter\Parser\KeywordManager;
 use PhpParser\Builder;
 use PhpParser\Node;
 use PhpParser\Node\Name;
@@ -24,7 +25,9 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
 
     public function __construct(
         private readonly MappedUnit $mappedUnit,
-        private readonly MappedResult $mappedResult
+        private readonly MappedResult $mappedResult,
+        private readonly bool $createAliases,
+        private readonly KeywordManager $keywordHelper
     ) {
     }
 
@@ -36,7 +39,7 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
 
         $nameManager = new NameManager();
 
-        return $nameManager->replaceFullyQualifiedNames($this->mappedResult, $nodes);
+        return $nameManager->replaceFullyQualifiedNames($this->mappedResult, $nodes, $this->keywordHelper);
     }
 
     public function enterNode(Node $node)
@@ -135,7 +138,11 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
             $nodes = $this->injectIntoNamespace($nodes, $newNamespace);
         }
 
-        return $this->refactorDeclares($nodes);
+        $nodes = $this->refactorDeclares($nodes);
+
+        $nodes = $this->createAliasesForOldName($nodes);
+
+        return $nodes;
     }
 
     /**
@@ -213,5 +220,27 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
         }
 
         return $newNodes;
+    }
+
+    /**
+     * @param Node[] $nodes
+     * @return Node[]
+     */
+    private function createAliasesForOldName(array $nodes): array
+    {
+        $aliasCall = new Node\Stmt\Expression(
+            new Node\Expr\FuncCall(
+                new Node\Name('class_alias'),
+                [
+                    new Node\Arg(new Node\Scalar\String_($this->mappedUnit->getNewFullQualifiedName())),
+                    new Node\Arg(new Node\Scalar\String_($this->mappedUnit->getOriginalFullQualifiedName())),
+                    new Node\Arg(new Node\Expr\ConstFetch(new Node\Name('false'))),
+                ]
+            )
+        );
+
+        $nodes[] = $aliasCall;
+
+        return $nodes;
     }
 }

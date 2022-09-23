@@ -19,12 +19,16 @@ class CleanManager
     public function createAliases(array $nodes, KeywordManager $keywordHelper): array
     {
         $traverser = new NodeTraverser();
+        $nameResolverTraverser = new NodeTraverser();
         $nameResolver = new CustomNameResolver([
             'preserveOriginalNames' => false,
             'replaceNodes' => false,
         ]);
 
-        $traverser->addVisitor($nameResolver);
+        $nameResolverTraverser->addVisitor($nameResolver);
+
+        $nameResolverTraverser->traverse($nodes);
+
         $traverser->addVisitor(new CreateImportsVisitor($keywordHelper, $nameResolver->getNameContext()));
 
         return $traverser->traverse($nodes);

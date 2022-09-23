@@ -41,6 +41,7 @@ class MappedUnit implements StatementDetailsInterface
         private readonly ?string $newNamespace,
         string|array $newName,
         private readonly string $targetFile,
+        private readonly string $targetFileWithoutVendor,
         private readonly string $stmtClass,
         private readonly bool $exclusive,
         private readonly bool $risky,
@@ -155,6 +156,14 @@ class MappedUnit implements StatementDetailsInterface
     public function getTargetFile(): string
     {
         return $this->targetFile;
+    }
+
+    /**
+     * @return string
+     */
+    public function getTargetFileWithoutVendor(): string
+    {
+        return $this->targetFileWithoutVendor;
     }
 
     /**

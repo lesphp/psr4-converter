@@ -12,7 +12,5 @@ interface ConverterInterface
      * @throws  \RuntimeException
      * @throws IncompatibleMergeFilesException
      */
-    public function convert(MappedFile $mappedFile, MappedResult $mappedResult): void;
-
-    public function refactor(MappedResult $mappedResult, string $refactoringDir): void;
+    public function convert(MappedFile $mappedFile, MappedResult $mappedResult, bool $createAliases): void;
 }

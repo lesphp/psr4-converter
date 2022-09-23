@@ -81,7 +81,7 @@ class KeywordManager
      */
     public function sanitizeNameWithSuffix(string $name, string $suffix): string
     {
-        return $this->isReservedKeyword($name) ? $name.$suffix : $name;
+        return $this->isValidNamespaceComponent($name) ? $name : $name.$suffix;
     }
 
     /**
@@ -91,6 +91,6 @@ class KeywordManager
      */
     public function sanitizeNameWithPrefix(string $name, string $prefix): string
     {
-        return $this->isReservedKeyword($name) ? $prefix.$name : $name;
+        return $this->isValidNamespaceComponent($name) ? $name : $prefix.$name;
     }
 }

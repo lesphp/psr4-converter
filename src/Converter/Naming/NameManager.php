@@ -7,6 +7,7 @@ use LesPhp\PSR4Converter\Converter\Doc\Visitor\FindNamesInUseVisitor as DocFindN
 use LesPhp\PSR4Converter\Converter\Doc\Visitor\ReplaceFullyQualifiedNameVisitor as DocReplaceFullyQualifiedNameVisitor;
 use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
 use LesPhp\PSR4Converter\Parser\CustomNameResolver;
+use LesPhp\PSR4Converter\Parser\KeywordManager;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
 
@@ -16,17 +17,21 @@ class NameManager
      * @param Node[] $nodes
      * @return Node[]
      */
-    public function replaceFullyQualifiedNames(MappedResult $mappedResult, array $nodes): array
+    public function replaceFullyQualifiedNames(MappedResult $mappedResult, array $nodes, KeywordManager $keywordHelper): array
     {
         $traverser = new NodeTraverser();
+        $nameResolverTraverser = new NodeTraverser();
         $nameResolver = new CustomNameResolver([
             'preserveOriginalNames' => false,
             'replaceNodes' => false,
         ]);
-        $replacePhpDocVisitor = new DocReplaceFullyQualifiedNameVisitor($nameResolver->getNameContext(), $mappedResult);
+        $replacePhpDocVisitor = new DocReplaceFullyQualifiedNameVisitor($nameResolver->getNameContext(), $mappedResult, $keywordHelper);
 
-        $traverser->addVisitor($nameResolver);
-        $traverser->addVisitor(new ReplaceFullyQualifiedNameVisitor($mappedResult));
+        $nameResolverTraverser->addVisitor($nameResolver);
+
+        $nameResolverTraverser->traverse($nodes);
+
+        $traverser->addVisitor(new ReplaceFullyQualifiedNameVisitor($mappedResult, $nameResolver->getNameContext()));
         $traverser->addVisitor(new PhpDocNodeTraverserVisitor($replacePhpDocVisitor));
 
         return $traverser->traverse($nodes);

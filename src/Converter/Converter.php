@@ -3,7 +3,6 @@
 namespace LesPhp\PSR4Converter\Converter;
 
 use LesPhp\PSR4Converter\Converter\Clean\CleanManager;
-use LesPhp\PSR4Converter\Converter\Naming\NameManager;
 use LesPhp\PSR4Converter\Converter\Node\NodeManager;
 use LesPhp\PSR4Converter\Exception\IncompatibleMergeFilesException;
 use LesPhp\PSR4Converter\Mapper\Result\MappedFile;
@@ -14,28 +13,22 @@ use PhpParser\Node;
 use PhpParser\Parser;
 use PhpParser\PrettyPrinter;
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\Filesystem\Path;
-use Symfony\Component\Finder\Finder;
 
 class Converter implements ConverterInterface
 {
-    private Parser $parser;
-
-    private string $destinationPath;
-
     public function __construct(
         private readonly KeywordManager $keywordHelper,
-        Parser $parser,
-        string $destinationPath
+        private readonly Parser $parser,
+        private readonly string $destinationPath,
+        private readonly bool $ignoreVendorNamespacePath
     ) {
-        $this->parser = $parser;
-        $this->destinationPath = $destinationPath;
+
     }
 
     /**
      * @inheritDoc
      */
-    public function convert(MappedFile $mappedFile, MappedResult $mappedResult): void
+    public function convert(MappedFile $mappedFile, MappedResult $mappedResult, bool $createAliases): void
     {
         $originalFilePath = $mappedFile->getFilePath();
         $originalFileContent = file_get_contents($originalFilePath);
@@ -45,17 +38,17 @@ class Converter implements ConverterInterface
         }
 
         foreach ($mappedFile->getUnits() as $mappedUnit) {
-            $this->addResultToAliases($mappedUnit, $mappedResult->getIncludesDirPath());
-
-            $unitStmts = $this->extractUnitStmts($mappedUnit, $mappedResult, $originalFileContent);
+            $unitStmts = $this->extractUnitStmts($mappedUnit, $mappedResult, $originalFileContent, $createAliases);
             $unitStmts = $this->clearStmts($unitStmts);
+            $targetFilePath = $this->destinationPath . '/' .
+                ($this->ignoreVendorNamespacePath ? $mappedUnit->getTargetFileWithoutVendor() : $mappedUnit->getTargetFile());
 
             if ($mappedUnit->isExclusive()) {
-                $this->dumpTargetFile($unitStmts, $mappedUnit->getTargetFile());
+                $this->dumpTargetFile($unitStmts, $targetFilePath);
             } else {
                 $this->appendTargetFile(
                     $unitStmts,
-                    $mappedUnit->getTargetFile(),
+                    $targetFilePath,
                     <<<EOL
                     <?php
                     
@@ -68,72 +61,6 @@ class Converter implements ConverterInterface
         }
     }
 
-    public function refactor(MappedResult $mappedResult, string $refactoringDir): void
-    {
-        $finder = (new Finder())
-            ->in($refactoringDir)
-            ->followLinks()
-            ->ignoreDotFiles(false)
-            ->ignoreVCSIgnored(false)
-            ->files()
-            ->name('*.php');
-
-        foreach ($finder as $refactoringFile) {
-            $stmts = $this->parser->parse($refactoringFile->getContents());
-
-            $stmts = $this->fullyQualifyNames($stmts, $mappedResult);
-            $stmts = $this->clearStmts($stmts);
-
-            $this->dumpTargetFile($stmts, $refactoringFile->getRealPath());
-        }
-    }
-
-    /**
-     * @throws IncompatibleMergeFilesException
-     */
-    private function addResultToAliases(MappedUnit $mappedUnit, string $includesDirPath): void
-    {
-        if ($mappedUnit->isCompound()) {
-            $componentStmtClasses = $mappedUnit->getComponentStmtClasses();
-            $originalFullQualifiedNames = $mappedUnit->getOriginalFullQualifiedName();
-            $newFullQualifiedNames = $mappedUnit->getNewFullQualifiedName();
-        } else {
-            $componentStmtClasses = (array)$mappedUnit->getStmtClass();
-            $originalFullQualifiedNames = (array)$mappedUnit->getOriginalFullQualifiedName();
-            $newFullQualifiedNames = (array)$mappedUnit->getNewFullQualifiedName();
-        }
-
-
-        foreach ($componentStmtClasses as $i => $componentStmtClass) {
-            if (!$this->isAllowAlias(
-                $componentStmtClass
-            ) || $newFullQualifiedNames[$i] === $originalFullQualifiedNames[$i]) {
-                continue;
-            }
-
-            $aliasCall = new Node\Stmt\Expression(
-                new Node\Expr\FuncCall(
-                    new Node\Name('class_alias'),
-                    [
-                        new Node\Arg(new Node\Scalar\String_($newFullQualifiedNames[$i])),
-                        new Node\Arg(new Node\Scalar\String_($originalFullQualifiedNames[$i])),
-                        new Node\Arg(new Node\Expr\ConstFetch(new Node\Name('true'))),
-                    ]
-                )
-            );
-
-            $this->appendTargetFile([$aliasCall], $includesDirPath.'/aliases.php');
-        }
-    }
-
-    private function isAllowAlias(string $stmtClass): bool
-    {
-        return is_a($stmtClass, Node\Stmt\Class_::class, true)
-            || is_a($stmtClass, Node\Stmt\Interface_::class, true)
-            || is_a($stmtClass, Node\Stmt\Trait_::class, true)
-            || is_a($stmtClass, Node\Stmt\Enum_::class, true);
-    }
-
     /**
      * @param Node[] $stmts
      * @throws IncompatibleMergeFilesException
@@ -143,16 +70,13 @@ class Converter implements ConverterInterface
     {
         $filesystem = new Filesystem();
         $nodeManager = new NodeManager();
-        $targetFileAbsolutePath = Path::isAbsolute($targetFilePath)
-            ? $targetFilePath
-            : $this->destinationPath.'/'.$targetFilePath;
         $currentStmts = [];
 
-        if ($filesystem->exists($targetFileAbsolutePath)) {
-            $targetFileContent = file_get_contents($targetFileAbsolutePath);
+        if ($filesystem->exists($targetFilePath)) {
+            $targetFileContent = file_get_contents($targetFilePath);
 
             if ($targetFileContent === false) {
-                throw new \RuntimeException(sprintf("Error on read content of file %s", $targetFileAbsolutePath));
+                throw new \RuntimeException(sprintf("Error on read content of file %s", $targetFilePath));
             }
 
             $currentStmts = $this->parser->parse($targetFileContent);
@@ -161,13 +85,13 @@ class Converter implements ConverterInterface
         if (count($currentStmts) === 0) {
             $this->dumpTargetFile(
                 array_merge($this->parser->parse((string)$initialContent), $stmts),
-                $targetFileAbsolutePath
+                $targetFilePath
             );
 
             return;
         }
 
-        $this->dumpTargetFile($nodeManager->append($currentStmts, $stmts), $targetFileAbsolutePath);
+        $this->dumpTargetFile($nodeManager->append($currentStmts, $stmts), $targetFilePath);
     }
 
     /**
@@ -177,36 +101,22 @@ class Converter implements ConverterInterface
     {
         $filesystem = new Filesystem();
         $prettyPrinter = new PrettyPrinter\Standard();
-        $targetFileAbsolutePath = Path::isAbsolute(
-            $targetFilePath
-        ) ? $targetFilePath : $this->destinationPath.'/'.$targetFilePath;
 
-        $filesystem->mkdir(dirname($targetFileAbsolutePath));
+        $filesystem->mkdir(dirname($targetFilePath));
 
-        $filesystem->dumpFile($targetFileAbsolutePath, $prettyPrinter->prettyPrintFile($stmts));
+        $filesystem->dumpFile($targetFilePath, $prettyPrinter->prettyPrintFile($stmts));
     }
 
     /**
      * @return Node[]
      */
-    private function extractUnitStmts(MappedUnit $mappedUnit, MappedResult $mappedResult, string $originalFileContent): array
+    private function extractUnitStmts(MappedUnit $mappedUnit, MappedResult $mappedResult, string $originalFileContent, bool $createAliases): array
     {
         $nodeManager = new NodeManager();
 
         $stmts = $this->parser->parse($originalFileContent);
 
-        return $nodeManager->extract($mappedUnit, $mappedResult, $stmts);
-    }
-
-    /**
-     * @param Node[] $stmts
-     * @return Node[]
-     */
-    private function fullyQualifyNames(array $stmts, MappedResult $mappedResult): array
-    {
-        $nameManager = new NameManager();
-
-        return $nameManager->replaceFullyQualifiedNames($mappedResult, $stmts);
+        return $nodeManager->extract($mappedUnit, $mappedResult, $stmts, $createAliases, $this->keywordHelper);
     }
 
     /**

@@ -61,7 +61,10 @@ class FindNamesInUseVisitor extends NodeVisitorAbstract
 
         if ($node instanceof Node\Stmt\Namespace_) {
             $this->visitedNames[] = $node->name;
-        } elseif ($node instanceof Node\Expr\FuncCall) {
+        } elseif (
+            $node instanceof Node\Expr\FuncCall
+            && $node->name instanceof Name
+        ) {
             $this->extractAliasForNonClassLike($node->name, Node\Stmt\Use_::TYPE_FUNCTION);
 
             $this->visitedNames[] = $node->name;

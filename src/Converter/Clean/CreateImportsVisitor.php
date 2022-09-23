@@ -128,7 +128,7 @@ class CreateImportsVisitor extends NodeVisitorAbstract
 
         if ($existentAlias !== null) {
             $node = new Node\Name($existentAlias, $node->getAttributes());
-        } elseif (count($node->parts) > 1) {
+        } elseif ($this->nameContext->getNamespace() !== null || count($node->parts) > 1) {
             $node = new Node\Name($this->generateAliasFor($type, $node), $node->getAttributes());
         }
 
@@ -151,7 +151,7 @@ class CreateImportsVisitor extends NodeVisitorAbstract
             return array_search((string)$name, $newUseClasses, true);
         }
 
-        return null;
+        return $this->nameContext->getAliasForName($name, $type);
     }
 
     private function generateAliasFor(int $type, FullyQualified $name): string

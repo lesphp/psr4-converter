@@ -2,6 +2,7 @@
 
 namespace LesPhp\PSR4Converter\Command;
 
+use LesPhp\PSR4Converter\Autoloader\AutoloaderFactoryInterface;
 use LesPhp\PSR4Converter\Converter\ConverterFactoryInterface;
 use LesPhp\PSR4Converter\Exception\InvalidHashException;
 use LesPhp\PSR4Converter\Parser\CustomEmulativeLexer;
@@ -21,9 +22,11 @@ class ConvertCommand extends Command
 
     private const DESTINATION_DIR_ARGUMENT = 'destination-dir';
 
-    private const ADDITIONAL_REFACTORING_DIR_OPTION = 'additional-dir';
-
     private const ALLOW_RISKY_OPTION = 'allow-risky';
+
+    private const IGNORE_VENDOR_NAMESPACE_PATH = 'ignore-vendor-path';
+
+    private const CREATE_ALIASES = 'create-aliases';
 
     protected static $defaultName = 'convert';
 
@@ -31,6 +34,7 @@ class ConvertCommand extends Command
 
     public function __construct(
         private readonly ConverterFactoryInterface $converterFactory,
+        private readonly AutoloaderFactoryInterface $autoloaderFactory,
         private readonly SerializerInterface $resultSerializer
     ) {
         parent::__construct();
@@ -51,16 +55,24 @@ class ConvertCommand extends Command
                 'directories to result conversion'
             )
             ->addOption(
-                self::ADDITIONAL_REFACTORING_DIR_OPTION,
-                'a',
-                InputOption::VALUE_REQUIRED | InputOption::VALUE_IS_ARRAY,
-                'additional directories to replace changed names'
-            )
-            ->addOption(
                 self::ALLOW_RISKY_OPTION,
                 null,
                 InputOption::VALUE_NEGATABLE,
                 'allow risky conversion',
+                false
+            )
+            ->addOption(
+                self::IGNORE_VENDOR_NAMESPACE_PATH,
+                null,
+                InputOption::VALUE_NEGATABLE,
+                'create target files without vendor namespace paths',
+                false
+            )
+            ->addOption(
+                self::CREATE_ALIASES,
+                null,
+                InputOption::VALUE_NEGATABLE,
+                'create aliases with class_alias and autoload files for old names',
                 false
             );
     }
@@ -70,8 +82,9 @@ class ConvertCommand extends Command
         $errorOutput = $output instanceof ConsoleOutputInterface ? $output->getErrorOutput() : $output;
         $mapFilenamePath = $input->getArgument(self::MAP_FILE_PATH_ARGUMENT);
         $destinationDir = $input->getArgument(self::DESTINATION_DIR_ARGUMENT);
-        $additionalDirs = $input->getOption(self::ADDITIONAL_REFACTORING_DIR_OPTION);
         $allowRisky = $input->getOption(self::ALLOW_RISKY_OPTION);
+        $ignoreVendorNamespacePath = $input->getOption(self::IGNORE_VENDOR_NAMESPACE_PATH);
+        $createAliases = $input->getOption(self::CREATE_ALIASES);
 
         // This ensures that there will be no errors when traversing highly nested node trees.
         if (extension_loaded('xdebug')) {
@@ -94,15 +107,6 @@ class ConvertCommand extends Command
             return Command::INVALID;
         }
 
-        foreach ($additionalDirs as $additionalDir) {
-            if (!is_dir($additionalDir) || !is_readable($additionalDir)) {
-                $errorOutput->writeln(
-                    sprintf("The additional refactoring directory %s doesn't exists or isn't readable.", $additionalDir)
-                );
-
-                return Command::INVALID;
-            }
-        }
 
         $mappedResult = $this->resultSerializer->deserialize($mapFileContent);
 
@@ -116,7 +120,7 @@ class ConvertCommand extends Command
 
         $lexer = new CustomEmulativeLexer();
         $parser = (new ParserFactory())->create($mappedResult->getPhpParserKind(), $lexer);
-        $converter = $this->converterFactory->createConverter($parser, $destinationDir);
+        $converter = $this->converterFactory->createConverter($parser, $destinationDir, $ignoreVendorNamespacePath);
 
         foreach ($mappedResult->getFiles() as $mappedFile) {
             if ($mappedFile->getHash() !== Mapper::calculateHash($mappedFile->getFilePath())) {
@@ -125,11 +129,13 @@ class ConvertCommand extends Command
         }
 
         foreach ($mappedResult->getFiles() as $mappedFile) {
-            $converter->convert($mappedFile, $mappedResult);
+            $converter->convert($mappedFile, $mappedResult, $createAliases);
         }
 
-        foreach ($additionalDirs as $additionalDir) {
-            $converter->refactor($mappedResult, $additionalDir);
+        if ($createAliases) {
+            $autoloader = $this->autoloaderFactory->createAutoloader();
+
+            $autoloader->generate($mappedResult, $destinationDir . '/' . $mappedResult->getIncludesDirPath() . '/autoload.php');
         }
 
         return Command::SUCCESS;

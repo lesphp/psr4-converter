@@ -4,13 +4,15 @@ namespace LesPhp\PSR4Converter\Converter\Doc\Visitor;
 
 use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
 use LesPhp\PSR4Converter\Parser\CustomNameContext;
+use LesPhp\PSR4Converter\Parser\KeywordManager;
 use PhpParser\Node\Name;
 
 class ReplaceFullyQualifiedNameVisitor extends AbstractReplaceNameVisitor
 {
     public function __construct(
         CustomNameContext $nameContext,
-        private readonly MappedResult $mappedResult
+        private readonly MappedResult $mappedResult,
+        private readonly KeywordManager $keywordHelper
     ) {
         parent::__construct($nameContext);
     }
@@ -31,6 +33,12 @@ class ReplaceFullyQualifiedNameVisitor extends AbstractReplaceNameVisitor
             $convertedNamesMap[$type]
         );
 
-        return $newName !== false ? '\\' . $newName : $name;
+        if ($newName !== false) {
+           return  '\\' . $newName;
+        }
+
+        return $resolvedName !== null && !$this->keywordHelper->isReservedKeyword($resolvedName)
+            ? $resolvedName->toCodeString()
+            : $name;
     }
 }
