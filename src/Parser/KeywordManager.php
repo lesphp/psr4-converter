@@ -50,6 +50,7 @@ class KeywordManager
         'parent',
         'mixed',
         'void',
+        'true',
         'false',
         'never',
     ];
