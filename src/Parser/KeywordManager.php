@@ -32,6 +32,26 @@ class KeywordManager
     ];
 
     /**
+     * @see https://www.php.net/manual/en/language.types.intro.php
+     * @see https://www.php.net/manual/en/language.types.declarations.php
+     */
+    private const BUILTIN_TYPE_HINTS = [
+        'bool', 'boolean',
+        'int', 'integer',
+        'float', 'double',
+        'string',
+        'array',
+        'object',
+        'callable',
+        'iterable',
+        'resource',
+        'null',
+        'self',
+        'parent',
+        'mixed',
+    ];
+
+    /**
      * @see https://www.php.net/manual/en/language.oop5.basic.php
      */
     private const VALID_NAME_REGEX = '/^[a-zA-Z_\x80-\xff][a-zA-Z0-9_\x80-\xff]*$/';
@@ -52,6 +72,11 @@ class KeywordManager
     public function isReservedKeyword(string $name): bool
     {
         return in_array(strtolower($name), self::RESERVED_KEYWORDS);
+    }
+
+    public function isBuiltInTypeHint(string $name): bool
+    {
+        return in_array(strtolower($name), self::BUILTIN_TYPE_HINTS);
     }
 
     public function isSpecialConstants(string $name): bool

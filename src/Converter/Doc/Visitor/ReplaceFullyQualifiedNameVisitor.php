@@ -19,7 +19,7 @@ class ReplaceFullyQualifiedNameVisitor extends AbstractReplaceNameVisitor
 
     protected function replaceName(string $name, int $type): string
     {
-        if ($this->keywordHelper->isReservedKeyword($name)) {
+        if ($this->keywordHelper->isReservedKeyword($name) || $this->keywordHelper->isBuiltInTypeHint($name)) {
             return $name;
         }
 
