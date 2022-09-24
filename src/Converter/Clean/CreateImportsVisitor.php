@@ -130,6 +130,8 @@ class CreateImportsVisitor extends NodeVisitorAbstract
             $node = new Node\Name($existentAlias, $node->getAttributes());
         } elseif ($this->nameContext->getNamespace() !== null || count($node->parts) > 1) {
             $node = new Node\Name($this->generateAliasFor($type, $node), $node->getAttributes());
+        } else {
+            $node = new Node\Name($node);
         }
 
         $this->importedNames[] = $node;

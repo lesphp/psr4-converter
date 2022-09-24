@@ -19,6 +19,10 @@ class ReplaceFullyQualifiedNameVisitor extends AbstractReplaceNameVisitor
 
     protected function replaceName(string $name, int $type): string
     {
+        if ($this->keywordHelper->isReservedKeyword($name)) {
+            return $name;
+        }
+
         $nameNode = $this->isFullyQualifiedName($name) ? new Name\FullyQualified(substr($name, strlen('\\'))) : new Name($name);
 
         $convertedNamesMap = $this->mappedResult->getConvertedNamesMap();
@@ -37,8 +41,10 @@ class ReplaceFullyQualifiedNameVisitor extends AbstractReplaceNameVisitor
            return  '\\' . $newName;
         }
 
-        return $resolvedName !== null && !$this->keywordHelper->isReservedKeyword($resolvedName)
-            ? $resolvedName->toCodeString()
-            : $name;
+        if ($resolvedName !== null) {
+            return  $resolvedName->toCodeString();
+        }
+
+        return  $name;
     }
 }

@@ -7,6 +7,7 @@ use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
 use LesPhp\PSR4Converter\Mapper\Result\MappedUnit;
 use LesPhp\PSR4Converter\Parser\KeywordManager;
 use PhpParser\Builder;
+use PhpParser\Comment\Doc;
 use PhpParser\Node;
 use PhpParser\Node\Name;
 use PhpParser\NodeTraverser;
@@ -124,6 +125,10 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
 
             $node->name = $newName;
 
+            if ($this->createAliases) {
+                return array_merge($this->createAliasesForOldName(), [$node]);
+            }
+
             return $node;
         }
 
@@ -138,11 +143,7 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
             $nodes = $this->injectIntoNamespace($nodes, $newNamespace);
         }
 
-        $nodes = $this->refactorDeclares($nodes);
-
-        $nodes = $this->createAliasesForOldName($nodes);
-
-        return $nodes;
+        return $this->refactorDeclares($nodes);
     }
 
     /**
@@ -223,24 +224,59 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
     }
 
     /**
-     * @param Node[] $nodes
      * @return Node[]
      */
-    private function createAliasesForOldName(array $nodes): array
+    private function createAliasesForOldName(): array
     {
-        $aliasCall = new Node\Stmt\Expression(
-            new Node\Expr\FuncCall(
-                new Node\Name('class_alias'),
-                [
-                    new Node\Arg(new Node\Scalar\String_($this->mappedUnit->getNewFullQualifiedName())),
-                    new Node\Arg(new Node\Scalar\String_($this->mappedUnit->getOriginalFullQualifiedName())),
-                    new Node\Arg(new Node\Expr\ConstFetch(new Node\Name('false'))),
-                ]
-            )
-        );
+        $aliasesCall = [];
 
-        $nodes[] = $aliasCall;
+        if ($this->mappedUnit->isCompound()) {
+            $componentStmtClasses = $this->mappedUnit->getComponentStmtClasses();
+            $originalFullQualifiedNames = $this->mappedUnit->getOriginalFullQualifiedName();
+            $newFullQualifiedNames = $this->mappedUnit->getNewFullQualifiedName();
+        } else {
+            $componentStmtClasses = (array)$this->mappedUnit->getStmtClass();
+            $originalFullQualifiedNames = (array)$this->mappedUnit->getOriginalFullQualifiedName();
+            $newFullQualifiedNames = (array)$this->mappedUnit->getNewFullQualifiedName();
+        }
 
-        return $nodes;
+        foreach ($componentStmtClasses as $i => $componentStmtClass) {
+            if (!$this->isAllowAlias(
+                    $componentStmtClass
+                ) || $newFullQualifiedNames[$i] === $originalFullQualifiedNames[$i]) {
+                continue;
+            }
+
+            $aliasCall = new Node\Stmt\Expression(
+                new Node\Expr\FuncCall(
+                    new Node\Name('class_alias'),
+                    [
+                        new Node\Arg(new Node\Scalar\String_($newFullQualifiedNames[$i])),
+                        new Node\Arg(new Node\Scalar\String_($originalFullQualifiedNames[$i])),
+                        new Node\Arg(new Node\Expr\ConstFetch(new Node\Name('false'))),
+                    ]
+                )
+            );
+
+            $aliasCall->setDocComment(new Doc(<<<EOF
+            /**
+             * @deprecated Avoid use of this alias, use the real name instead.
+             * @see \\${newFullQualifiedNames[$i]}
+             */
+            EOF
+            ));
+
+            $aliasesCall[] = $aliasCall;
+        }
+
+        return $aliasesCall;
+    }
+
+    private function isAllowAlias(string $stmtClass): bool
+    {
+        return is_a($stmtClass, Node\Stmt\Class_::class, true)
+            || is_a($stmtClass, Node\Stmt\Interface_::class, true)
+            || is_a($stmtClass, Node\Stmt\Trait_::class, true)
+            || is_a($stmtClass, Node\Stmt\Enum_::class, true);
     }
 }

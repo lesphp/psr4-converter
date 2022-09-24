@@ -97,12 +97,6 @@ class FindNamesInUseVisitor extends NodeVisitorAbstract
             }
         }
 
-        foreach ($nameManager->findDocNamesInUse($nodes) as $type => $docNamesInUse) {
-            foreach ($docNamesInUse as $alias => $docNameInUse) {
-                $this->currentAliases[$type][$alias] = $docNameInUse;
-            }
-        }
-
         return null;
     }
 

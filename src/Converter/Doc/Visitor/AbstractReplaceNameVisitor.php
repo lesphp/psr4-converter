@@ -39,9 +39,6 @@ abstract class AbstractReplaceNameVisitor extends AbstractPhpDocNodeVisitor
             }
 
             return new ConstFetchNode($className, $name);
-        } elseif ($node instanceof GenericTagValueNode && !empty($node->value)) {
-            // Maybe a class name, e.g. @uses
-            return new GenericTagValueNode($this->replaceName($node->value, Use_::TYPE_NORMAL));
         }
 
         return null;

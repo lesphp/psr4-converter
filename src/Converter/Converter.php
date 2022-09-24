@@ -128,7 +128,6 @@ class Converter implements ConverterInterface
         $cleanManager = new CleanManager();
 
         $stmts = $cleanManager->createAliases($stmts, $this->keywordHelper);
-        $stmts = $cleanManager->createAliasesFoDoc($stmts);
 
         return $cleanManager->removeUnusedImports($stmts);
     }

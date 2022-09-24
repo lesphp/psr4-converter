@@ -90,8 +90,8 @@ class MapFileVisitor extends NodeVisitorAbstract
                 $filePath,
                 $node
             );
-            $targetFileWithoutVendor = $this->removeVendorPath($targetFile, $vendorNamespace);
             $isExclusive = $this->isExclusive($node);
+            $targetFileWithoutVendor = $isExclusive ? $this->removeVendorPath($targetFile, $vendorNamespace) : $targetFile;
             $hasRisky = $this->hasRisky($node, $originalNamespace, $originalName, $underscoreConversion);
             $statementDetails = $this->generateStatementDetails($node);
             $componentStmtClasses = $this->generateComponentStmtClasses($node);

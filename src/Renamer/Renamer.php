@@ -77,7 +77,6 @@ class Renamer implements RenamerInterface
         $cleanManager = new CleanManager();
 
         $stmts = $cleanManager->createAliases($stmts, $this->keywordHelper);
-        $stmts = $cleanManager->createAliasesFoDoc($stmts);
 
         return $cleanManager->removeUnusedImports($stmts);
     }
