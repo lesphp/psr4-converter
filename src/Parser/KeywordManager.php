@@ -49,6 +49,9 @@ class KeywordManager
         'self',
         'parent',
         'mixed',
+        'void',
+        'false',
+        'never',
     ];
 
     /**
