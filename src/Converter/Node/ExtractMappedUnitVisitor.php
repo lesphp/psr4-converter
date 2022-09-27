@@ -126,7 +126,7 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
             $node->name = $newName;
 
             if ($this->createAliases) {
-                return array_merge($this->createAliasesForOldName(), [$node]);
+                return array_merge([$node], $this->createAliasesForOldName());
             }
 
             return $node;
@@ -257,14 +257,6 @@ class ExtractMappedUnitVisitor extends NodeVisitorAbstract
                     ]
                 )
             );
-
-            $aliasCall->setDocComment(new Doc(<<<EOF
-            /**
-             * @deprecated Avoid use of this alias, use the real name instead.
-             * @see \\${newFullQualifiedNames[$i]}
-             */
-            EOF
-            ));
 
             $aliasesCall[] = $aliasCall;
         }
