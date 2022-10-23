@@ -8,7 +8,7 @@ use LesPhp\PSR4Converter\Mapper\Node\MapFileVisitor;
 use LesPhp\PSR4Converter\Mapper\Node\NodeManager;
 use LesPhp\PSR4Converter\Mapper\Result\MappedError;
 use LesPhp\PSR4Converter\Mapper\Result\MappedFile;
-use LesPhp\PSR4Converter\Parser\KeywordManager;
+use LesPhp\PSR4Converter\Parser\Naming\NameHelper;
 use PhpParser\Error;
 use PhpParser\Lexer;
 use PhpParser\Node;
@@ -29,7 +29,7 @@ class Mapper implements MapperInterface
      * @throws InvalidNamespaceException
      */
     public function __construct(
-        private readonly KeywordManager $keywordHelper,
+        private readonly NameHelper $keywordHelper,
         private readonly Parser $parser,
         private readonly Lexer $lexer,
         private readonly string $srcPath,

@@ -2,13 +2,12 @@
 
 namespace LesPhp\PSR4Converter\Converter;
 
-use LesPhp\PSR4Converter\Converter\Clean\CleanManager;
 use LesPhp\PSR4Converter\Converter\Node\NodeManager;
 use LesPhp\PSR4Converter\Exception\IncompatibleMergeFilesException;
 use LesPhp\PSR4Converter\Mapper\Result\MappedFile;
 use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
 use LesPhp\PSR4Converter\Mapper\Result\MappedUnit;
-use LesPhp\PSR4Converter\Parser\KeywordManager;
+use LesPhp\PSR4Converter\Parser\Naming\NameManager;
 use PhpParser\Node;
 use PhpParser\Parser;
 use PhpParser\PrettyPrinter;
@@ -16,19 +15,23 @@ use Symfony\Component\Filesystem\Filesystem;
 
 class Converter implements ConverterInterface
 {
+    private readonly NameManager $nameManager;
+
+    private readonly NodeManager $nodeManager;
+
     public function __construct(
-        private readonly KeywordManager $keywordHelper,
         private readonly Parser $parser,
         private readonly string $destinationPath,
         private readonly bool $ignoreVendorNamespacePath
     ) {
-
+        $this->nameManager = new NameManager();
+        $this->nodeManager = new NodeManager();
     }
 
     /**
      * @inheritDoc
      */
-    public function convert(MappedFile $mappedFile, MappedResult $mappedResult, bool $createAliases): void
+    public function convert(MappedFile $mappedFile, MappedResult $mappedResult, bool $createAliases, array $additionalMappedResults = []): void
     {
         $originalFilePath = $mappedFile->getFilePath();
         $originalFileContent = file_get_contents($originalFilePath);
@@ -38,8 +41,8 @@ class Converter implements ConverterInterface
         }
 
         foreach ($mappedFile->getUnits() as $mappedUnit) {
-            $unitStmts = $this->extractUnitStmts($mappedUnit, $mappedResult, $originalFileContent, $createAliases);
-            $unitStmts = $this->clearStmts($unitStmts);
+            $unitStmts = $this->extractUnitStmts($mappedUnit, $mappedResult, $originalFileContent, $createAliases, $additionalMappedResults);
+            $unitStmts = $this->nameManager->createAliases($unitStmts);
             $targetFilePath = $this->destinationPath . '/' .
                 ($this->ignoreVendorNamespacePath ? $mappedUnit->getTargetFileWithoutVendor() : $mappedUnit->getTargetFile());
 
@@ -69,7 +72,6 @@ class Converter implements ConverterInterface
     private function appendTargetFile(array $stmts, string $targetFilePath, string $initialContent = null): void
     {
         $filesystem = new Filesystem();
-        $nodeManager = new NodeManager();
         $currentStmts = [];
 
         if ($filesystem->exists($targetFilePath)) {
@@ -91,7 +93,7 @@ class Converter implements ConverterInterface
             return;
         }
 
-        $this->dumpTargetFile($nodeManager->append($currentStmts, $stmts), $targetFilePath);
+        $this->dumpTargetFile(array_merge($currentStmts, $stmts), $targetFilePath);
     }
 
     /**
@@ -108,27 +110,13 @@ class Converter implements ConverterInterface
     }
 
     /**
+     * @param MappedResult[] $additionalMappedResults
      * @return Node[]
      */
-    private function extractUnitStmts(MappedUnit $mappedUnit, MappedResult $mappedResult, string $originalFileContent, bool $createAliases): array
+    private function extractUnitStmts(MappedUnit $mappedUnit, MappedResult $mappedResult, string $originalFileContent, bool $createAliases, array $additionalMappedResults = []): array
     {
-        $nodeManager = new NodeManager();
-
         $stmts = $this->parser->parse($originalFileContent);
 
-        return $nodeManager->extract($mappedUnit, $mappedResult, $stmts, $createAliases, $this->keywordHelper);
-    }
-
-    /**
-     * @param Node[] $stmts
-     * @return Node[]
-     */
-    private function clearStmts(array $stmts): array
-    {
-        $cleanManager = new CleanManager();
-
-        $stmts = $cleanManager->createAliases($stmts, $this->keywordHelper);
-
-        return $cleanManager->removeUnusedImports($stmts);
+        return $this->nodeManager->extract($mappedUnit, $mappedResult, $stmts, $createAliases, $additionalMappedResults);
     }
 }

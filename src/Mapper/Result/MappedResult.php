@@ -191,6 +191,26 @@ class MappedResult
     }
 
     /**
+     * @param MappedResult[] $mappedResults
+     * @return array<int, array<string, string>>
+     */
+    public function mergeConvertedNamesMap(array $mappedResults): array
+    {
+        $mergedConvertedNamesMap = $this->convertedNamesMap;
+        $types = [Node\Stmt\Use_::TYPE_NORMAL, Node\Stmt\Use_::TYPE_FUNCTION, Node\Stmt\Use_::TYPE_CONSTANT];
+
+        foreach ($mappedResults as $mappedResult) {
+            $otherConvertedNamesMap = $mappedResult->getConvertedNamesMap();
+
+            foreach ($types as $type) {
+                $mergedConvertedNamesMap[$type] = array_merge($mergedConvertedNamesMap[$type], $otherConvertedNamesMap[$type]);
+            }
+        }
+
+        return $mergedConvertedNamesMap;
+    }
+
+    /**
      * @throws MapperConflictException
      */
     private function checkConflictExclusiveUnits(MappedUnit $unit): void

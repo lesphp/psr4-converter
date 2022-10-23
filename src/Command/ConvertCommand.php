@@ -8,6 +8,7 @@ use LesPhp\PSR4Converter\Exception\InvalidHashException;
 use LesPhp\PSR4Converter\Parser\CustomEmulativeLexer;
 use LesPhp\PSR4Converter\Mapper\Mapper;
 use LesPhp\PSR4Converter\Mapper\Result\Serializer\SerializerInterface;
+use LesPhp\PSR4Converter\Renamer\RenamerFactoryInterface;
 use PhpParser\ParserFactory;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;
@@ -23,6 +24,8 @@ class ConvertCommand extends Command
     private const DESTINATION_DIR_ARGUMENT = 'destination-dir';
 
     private const ALLOW_RISKY_OPTION = 'allow-risky';
+
+    private const ADDITIONAL_MAP_FILE_PATH_OPTION = 'additional-map-file';
 
     private const IGNORE_VENDOR_NAMESPACE_PATH = 'ignore-vendor-path';
 
@@ -55,6 +58,13 @@ class ConvertCommand extends Command
                 'directories to result conversion'
             )
             ->addOption(
+                self::ADDITIONAL_MAP_FILE_PATH_OPTION,
+                'm',
+                InputOption::VALUE_IS_ARRAY | InputOption::VALUE_REQUIRED,
+                'Path to additional map file. It will be used to map others changed names.',
+                []
+            )
+            ->addOption(
                 self::ALLOW_RISKY_OPTION,
                 null,
                 InputOption::VALUE_NEGATABLE,
@@ -85,6 +95,7 @@ class ConvertCommand extends Command
         $allowRisky = $input->getOption(self::ALLOW_RISKY_OPTION);
         $ignoreVendorNamespacePath = $input->getOption(self::IGNORE_VENDOR_NAMESPACE_PATH);
         $createAliases = $input->getOption(self::CREATE_ALIASES);
+        $additionalMapPaths = $input->getOption(self::ADDITIONAL_MAP_FILE_PATH_OPTION);
 
         // This ensures that there will be no errors when traversing highly nested node trees.
         if (extension_loaded('xdebug')) {
@@ -107,6 +118,19 @@ class ConvertCommand extends Command
             return Command::INVALID;
         }
 
+        $additionalMappedResults = [];
+
+        foreach ($additionalMapPaths as $additionalMapPath) {
+            $additionalMapFileContent = file_get_contents($additionalMapPath);
+
+            if ($additionalMapFileContent === false) {
+                $errorOutput->writeln(sprintf("The additional map file '%s' doesn't exists or isn't readable.", $additionalMapPath));
+
+                return Command::INVALID;
+            }
+
+            $additionalMappedResults[] = $this->resultSerializer->deserialize($additionalMapFileContent);;
+        }
 
         $mappedResult = $this->resultSerializer->deserialize($mapFileContent);
 
@@ -129,11 +153,11 @@ class ConvertCommand extends Command
         }
 
         foreach ($mappedResult->getFiles() as $mappedFile) {
-            $converter->convert($mappedFile, $mappedResult, $createAliases);
+            $converter->convert($mappedFile, $mappedResult, $createAliases, $additionalMappedResults);
         }
 
         if ($createAliases) {
-            $autoloader = $this->autoloaderFactory->createAutoloader();
+            $autoloader = $this->autoloaderFactory->createAutoloader($parser);
 
             $autoloader->generate($mappedResult, $destinationDir . '/' . $mappedResult->getIncludesDirPath() . '/autoload.php');
         }

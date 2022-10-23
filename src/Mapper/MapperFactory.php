@@ -2,7 +2,7 @@
 
 namespace LesPhp\PSR4Converter\Mapper;
 
-use LesPhp\PSR4Converter\Parser\KeywordManager;
+use LesPhp\PSR4Converter\Parser\Naming\NameHelper;
 use PhpParser\Lexer;
 use PhpParser\Parser;
 
@@ -20,7 +20,7 @@ class MapperFactory implements MapperFactoryInterface
         array $ignoreNamespaces
     ): MapperInterface {
         return new Mapper(
-            new KeywordManager(),
+            new NameHelper(),
             $parser,
             $lexer,
             $srcPath,

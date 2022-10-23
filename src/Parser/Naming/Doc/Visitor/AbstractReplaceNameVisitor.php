@@ -1,13 +1,13 @@
 <?php
 
-namespace LesPhp\PSR4Converter\Converter\Doc\Visitor;
+namespace LesPhp\PSR4Converter\Parser\Naming\Doc\Visitor;
 
-use LesPhp\PSR4Converter\Converter\Doc\AnnotationTagNode;
-use LesPhp\PSR4Converter\Parser\CustomNameContext;
+use LesPhp\PSR4Converter\Parser\Naming\CustomNameContext;
+use LesPhp\PSR4Converter\Parser\Naming\Doc\AnnotationTagNode;
+use LesPhp\PSR4Converter\Parser\Naming\NameHelper;
 use PhpParser\Node\Stmt\Use_;
 use PHPStan\PhpDocParser\Ast\ConstExpr\ConstFetchNode;
 use PHPStan\PhpDocParser\Ast\Node;
-use PHPStan\PhpDocParser\Ast\PhpDoc\GenericTagValueNode;
 use PHPStan\PhpDocParser\Ast\PhpDoc\PhpDocTagNode;
 use PHPStan\PhpDocParser\Ast\Type\IdentifierTypeNode;
 use Symplify\Astral\PhpDocParser\PhpDocNodeVisitor\AbstractPhpDocNodeVisitor;
@@ -15,13 +15,18 @@ use Symplify\Astral\PhpDocParser\PhpDocNodeVisitor\AbstractPhpDocNodeVisitor;
 abstract class AbstractReplaceNameVisitor extends AbstractPhpDocNodeVisitor
 {
     public function __construct(
-        protected readonly CustomNameContext $nameContext
-    ) {
+        protected readonly NameHelper $nameHelper,
+        protected readonly CustomNameContext $currentNameContext
+    )
+    {
     }
 
-    public function enterNode(Node $node) : ?Node
+    public function enterNode(Node $node) : int|Node|null
     {
-        if ($node instanceof PhpDocTagNode && AnnotationTagNode::isApplicableFor($node, $this->nameContext)) {
+        if (
+            $node instanceof PhpDocTagNode
+            && AnnotationTagNode::isApplicableFor($node, $this->currentNameContext)
+        ) {
             return new AnnotationTagNode($node->name, $node->value);
         }
 
@@ -44,10 +49,10 @@ abstract class AbstractReplaceNameVisitor extends AbstractPhpDocNodeVisitor
         return null;
     }
 
-    abstract protected function replaceName(string $name, int $type): string;
-
     protected function isFullyQualifiedName(string $name): bool
     {
         return str_starts_with($name, '\\');
     }
+
+    abstract protected function replaceName(string $name, int $type): string;
 }

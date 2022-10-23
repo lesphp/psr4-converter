@@ -2,10 +2,8 @@
 
 namespace LesPhp\PSR4Converter\Renamer;
 
-use LesPhp\PSR4Converter\Converter\Clean\CleanManager;
-use LesPhp\PSR4Converter\Converter\Naming\NameManager;
 use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
-use LesPhp\PSR4Converter\Parser\KeywordManager;
+use LesPhp\PSR4Converter\Parser\Naming\NameManager;
 use PhpParser\Node;
 use PhpParser\Parser;
 use PhpParser\PrettyPrinter;
@@ -14,11 +12,12 @@ use Symfony\Component\Finder\Finder;
 
 class Renamer implements RenamerInterface
 {
+    private readonly NameManager $nameManager;
+
     public function __construct(
-        private readonly KeywordManager $keywordHelper,
         private readonly Parser $parser
     ) {
-
+        $this->nameManager = new NameManager();
     }
 
     /**
@@ -37,8 +36,8 @@ class Renamer implements RenamerInterface
         foreach ($finder as $refactoringFile) {
             $stmts = $this->parser->parse($refactoringFile->getContents());
 
-            $stmts = $this->fullyQualifyNames($stmts, $mappedResult, $this->keywordHelper);
-            $stmts = $this->clearStmts($stmts);
+            $stmts = $this->nameManager->replaceFullyQualifiedNames($mappedResult, $stmts);
+            $stmts = $this->nameManager->createAliases($stmts);
 
             $this->dumpTargetFile($stmts, $refactoringFile->getRealPath());
         }
@@ -55,29 +54,5 @@ class Renamer implements RenamerInterface
         $filesystem->mkdir(dirname($targetFilePath));
 
         $filesystem->dumpFile($targetFilePath, $prettyPrinter->prettyPrintFile($stmts));
-    }
-
-    /**
-     * @param Node[] $stmts
-     * @return Node[]
-     */
-    private function fullyQualifyNames(array $stmts, MappedResult $mappedResult, KeywordManager $keywordHelper): array
-    {
-        $nameManager = new NameManager();
-
-        return $nameManager->replaceFullyQualifiedNames($mappedResult, $stmts, $keywordHelper);
-    }
-
-    /**
-     * @param Node[] $stmts
-     * @return Node[]
-     */
-    private function clearStmts(array $stmts): array
-    {
-        $cleanManager = new CleanManager();
-
-        $stmts = $cleanManager->createAliases($stmts, $this->keywordHelper);
-
-        return $cleanManager->removeUnusedImports($stmts);
     }
 }

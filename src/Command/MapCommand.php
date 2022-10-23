@@ -2,7 +2,8 @@
 
 namespace LesPhp\PSR4Converter\Command;
 
-use LesPhp\PSR4Converter\Console\MapperDumper;
+use LesPhp\PSR4Converter\Inspector\DumperInterface;
+use LesPhp\PSR4Converter\Inspector\TableDumper;
 use LesPhp\PSR4Converter\Exception\InvalidNamespaceException;
 use LesPhp\PSR4Converter\Exception\MapperConflictException;
 use LesPhp\PSR4Converter\Parser\CustomEmulativeLexer;
@@ -180,7 +181,7 @@ class MapCommand extends Command
         $ignoreNamespacedUnderscoreConversion = $input->getOption(self::IGNORE_NAMESPACED_UNDERSCORE_CONVERSION);
         $prefixNamespace = $input->getArgument(self::PREFIX_NAMESPACE);
         $srcPath = $input->getArgument(self::SRC_ARGUMENT);
-        $statementsDumper = new MapperDumper();
+        $statementsDumper = new TableDumper();
 
         // This ensures that there will be no errors when traversing highly nested node trees.
         if (extension_loaded('xdebug')) {
@@ -244,7 +245,7 @@ class MapCommand extends Command
         if ($mappedResult->hasError()) {
             $errorOutput->writeln('There are errors on conversions attempts, fix it.');
 
-            $statementsDumper->dumpInfoTable($mappedResult->getErrors(), $srcRealPath, $errorOutput);
+            $statementsDumper->dumpStmts($mappedResult->getErrors(), $srcRealPath, $errorOutput);
 
             return Command::INVALID;
         }
@@ -255,7 +256,7 @@ class MapCommand extends Command
             );
         }
 
-        $statementsDumper->dumpResult($mappedResult, $output);
+        $this->dumpResult($statementsDumper, $mappedResult, $output);
 
         if (!$dryRun) {
             $filesystem->dumpFile($mapFileRealPath, $this->resultSerializer->serialize($mappedResult));
@@ -264,5 +265,16 @@ class MapCommand extends Command
         }
 
         return Command::SUCCESS;
+    }
+
+    public function dumpResult(DumperInterface $statementsDumper, MappedResult $mappedResult, OutputInterface $output): void
+    {
+        $statementsDumper->dumpStmts($mappedResult->getNoRisky(), $mappedResult->getSrcPath(), $output);
+
+        $output->writeln("Risky conversions");
+
+        if ($mappedResult->hasRisky()) {
+            $statementsDumper->dumpStmts($mappedResult->getRisky(), $mappedResult->getSrcPath(), $output);
+        }
     }
 }

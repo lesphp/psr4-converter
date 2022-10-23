@@ -4,10 +4,16 @@ namespace LesPhp\PSR4Converter\Autoloader;
 
 use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
 use PhpParser\Node;
+use PhpParser\Parser;
+use PhpParser\PrettyPrinter;
 use Symfony\Component\Filesystem\Filesystem;
 
 class Autoloader implements AutoloaderInterface
 {
+    public function __construct(private readonly Parser $parser)
+    {
+    }
+
     /**
      * @inheritDoc
      */
@@ -57,6 +63,7 @@ class Autoloader implements AutoloaderInterface
     private function dumpAutoloadFile(array $aliasMap, string $filePath): void
     {
         $filesystem = new Filesystem();
+        $prettyPrinter = new PrettyPrinter\Standard();
 
         $autoloadContentTemplate = <<<'EOF'
         <?php
@@ -71,10 +78,11 @@ class Autoloader implements AutoloaderInterface
             return null;
         });
         EOF;
-        $autoloadContent = sprintf($autoloadContentTemplate, var_export($aliasMap, true));
+
+        $stmts = $this->parser->parse(sprintf($autoloadContentTemplate, var_export($aliasMap, true)));
 
         $filesystem->mkdir(dirname($filePath));
 
-        $filesystem->dumpFile($filePath, $autoloadContent);
+        $filesystem->dumpFile($filePath, $prettyPrinter->prettyPrintFile($stmts));
     }
 }

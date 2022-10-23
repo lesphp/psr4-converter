@@ -1,8 +1,10 @@
 <?php
 
-namespace LesPhp\PSR4Converter\Parser;
+namespace LesPhp\PSR4Converter\Parser\Naming;
 
-class KeywordManager
+use PhpParser\Node\Stmt\DeclareDeclare;
+
+class NameHelper
 {
     /**
      * @see https://www.php.net/manual/en/reserved.keywords.php
@@ -26,33 +28,24 @@ class KeywordManager
      * @see https://www.php.net/manual/en/reserved.constants.php
      */
     private const RESERVED_CONSTANTS = [
-        'true',
-        'false',
-        'null',
+        'true', 'false', 'null',
     ];
+
+    /**
+     * @see https://www.php.net/manual/en/language.namespaces.rationale.php
+     */
+    private const RESERVED_NAMESPACES = [
+        'PHP',
+    ];
+    
 
     /**
      * @see https://www.php.net/manual/en/language.types.intro.php
      * @see https://www.php.net/manual/en/language.types.declarations.php
      */
     private const BUILTIN_TYPE_HINTS = [
-        'bool', 'boolean',
-        'int', 'integer',
-        'float', 'double',
-        'string',
-        'array',
-        'object',
-        'callable',
-        'iterable',
-        'resource',
-        'null',
-        'self',
-        'parent',
-        'mixed',
-        'void',
-        'true',
-        'false',
-        'never',
+        'bool', 'int', 'float', 'string', 'array', 'object', 'callable', 'iterable',
+        'resource', 'null', 'self', 'parent', 'mixed', 'void', 'true', 'false', 'never',
     ];
 
     /**
@@ -60,9 +53,7 @@ class KeywordManager
      * @see https://www.php.net/manual/en/language.types.declarations.php
      */
     private const BUILTIN_TYPE_HINTS_ALIASES = [
-        'boolean',
-        'integer',
-        'double',
+        'boolean', 'integer', 'double',
     ];
 
     /**
@@ -75,7 +66,7 @@ class KeywordManager
         $parts = explode('\\', $namespace);
         $invalidParts = array_filter($parts, fn ($part) => !$this->isValidNamespaceComponent($part));
 
-        return count($invalidParts) == 0 && $parts[0] !== 'PHP';
+        return count($invalidParts) == 0 && !in_array($parts[0], self::RESERVED_NAMESPACES);
     }
 
     public function isValidNamespaceComponent(string $name): bool

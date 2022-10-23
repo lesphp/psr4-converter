@@ -44,6 +44,7 @@ class MappedUnit implements StatementDetailsInterface
         private readonly string $targetFileWithoutVendor,
         private readonly string $stmtClass,
         private readonly bool $exclusive,
+        private readonly bool $classLike,
         private readonly bool $risky,
         private readonly ?string $details,
         ?array $componentStmtClasses = null
@@ -123,6 +124,14 @@ class MappedUnit implements StatementDetailsInterface
     /**
      * @return string|null
      */
+    public function getOriginalNamespace(): ?string
+    {
+        return $this->originalNamespace;
+    }
+
+    /**
+     * @return string|null
+     */
     public function getNewNamespace(): ?string
     {
         return $this->newNamespace;
@@ -180,6 +189,14 @@ class MappedUnit implements StatementDetailsInterface
     public function isExclusive(): bool
     {
         return $this->exclusive;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isClassLike(): bool
+    {
+        return $this->classLike;
     }
 
     /**

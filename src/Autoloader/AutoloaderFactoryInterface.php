@@ -6,5 +6,5 @@ use PhpParser\Parser;
 
 interface AutoloaderFactoryInterface
 {
-    public function createAutoloader(): AutoloaderInterface;
+    public function createAutoloader(Parser $parser): AutoloaderInterface;
 }

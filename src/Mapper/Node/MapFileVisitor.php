@@ -4,14 +4,12 @@ namespace LesPhp\PSR4Converter\Mapper\Node;
 
 use LesPhp\PSR4Converter\Mapper\MapperContext;
 use LesPhp\PSR4Converter\Mapper\Result\MappedUnit;
-use LesPhp\PSR4Converter\Parser\CustomNameContext;
-use LesPhp\PSR4Converter\Parser\KeywordManager;
+use LesPhp\PSR4Converter\Parser\Node\AbstractNodeVisitor;
 use PhpParser\Node;
 use PhpParser\Node\Name;
 use PhpParser\NodeTraverser;
-use PhpParser\NodeVisitorAbstract;
 
-class MapFileVisitor extends NodeVisitorAbstract
+class MapFileVisitor extends AbstractNodeVisitor
 {
     public const IGNORE_ALL_NAMESPACES = '*';
 
@@ -26,43 +24,33 @@ class MapFileVisitor extends NodeVisitorAbstract
      */
     private array $mappedUnits;
 
-    /**
-     * @var Node\Stmt\Declare_[]
-     */
-    private array $openDeclares;
-
     public function __construct(
-        private readonly MapperContext $mapperContext,
-        private readonly CustomNameContext $nameContext,
-        private readonly KeywordManager $keywordHelper
+        private readonly MapperContext $mapperContext
     ) {
+        parent::__construct();
     }
 
-    public function beforeTraverse(array $nodes)
+    public function before(array $nodes)
     {
         $this->namespaceStartTokenPos = null;
         $this->namespaceEndTokenPos = null;
-        $this->openDeclares = [];
         $this->mappedUnits = [];
     }
 
-    public function enterNode(Node $node)
+    public function enter(Node $node)
     {
-        if ($node instanceof Node\Stmt\Declare_) {
-            $this->openDeclares[] = $node;
-        } elseif ($node instanceof Node\Stmt\Namespace_) {
+        if ($node instanceof Node\Stmt\Namespace_) {
             $this->namespaceStartTokenPos = $node->getStartTokenPos();
             $this->namespaceEndTokenPos = $node->getEndTokenPos();
         }
 
         if ($this->isValidRootStatement($node)) {
-            $nameContext = $this->nameContext;
             $filePath = $this->mapperContext->getFilePath();
             $vendorNamespace = $this->mapperContext->getPrefixNamespace();
             $includesDirPath = $this->mapperContext->getIncludesDirPath();
             $isAppendNamespace = $this->mapperContext->isAppendNamespace();
             $ignoreNamespaces = $this->mapperContext->getIgnoreNamespaces();
-            $originalNamespace = $nameContext->getNamespace() !== null ? (string)$nameContext->getNamespace() : null;
+            $originalNamespace = $this->currentNameContext->getNamespace()?->toString();
             $ignoreNamespacedUnderscoreConversion = $this->mapperContext->isIgnoreNamespacedUnderscoreConversion();
             $underscoreConversion = $this->mapperContext->isUnderscoreConversion()
                 && ($originalNamespace === null || !$ignoreNamespacedUnderscoreConversion);
@@ -87,11 +75,11 @@ class MapFileVisitor extends NodeVisitorAbstract
                 $newNamespace,
                 $newName,
                 $includesDirPath,
-                $filePath,
                 $node
             );
-            $isExclusive = $this->isExclusive($node);
-            $targetFileWithoutVendor = $isExclusive ? $this->removeVendorPath($targetFile, $vendorNamespace) : $targetFile;
+            $isExclusive = $this->isExclusive($node) || $this->nodeHelper->hasNoBlockModeDeclare([$node]);
+            $isClassLike = $this->isClassLike($node);
+            $targetFileWithoutVendor = $isClassLike ? $this->removeVendorPath($targetFile, $vendorNamespace) : $targetFile;
             $hasRisky = $this->hasRisky($node, $originalNamespace, $originalName, $underscoreConversion);
             $statementDetails = $this->generateStatementDetails($node);
             $componentStmtClasses = $this->generateComponentStmtClasses($node);
@@ -114,6 +102,7 @@ class MapFileVisitor extends NodeVisitorAbstract
                 $targetFileWithoutVendor,
                 $this->getStmtClass($node),
                 $isExclusive,
+                $isClassLike,
                 $hasRisky,
                 $statementDetails,
                 $componentStmtClasses
@@ -197,14 +186,14 @@ class MapFileVisitor extends NodeVisitorAbstract
             || $node instanceof Node\Stmt\If_
             || !$underscoreConversion
         ) {
-            return $this->keywordHelper->sanitizeNamespace($prefixNamespace, '_');
+            return $this->nameHelper->sanitizeNamespace($prefixNamespace, '_');
         }
 
         $nodeName = property_exists($node, 'name') ? (string)$node?->name: '';
         $psr4FromPsr0 = str_replace('_', '\\', substr($nodeName, 0, strrpos($nodeName, '_')));
         $newNamespace = $prefixNamespace.($psr4FromPsr0 !== '' ? '\\'.$psr4FromPsr0 : '');
 
-        return $this->keywordHelper->sanitizeNamespace($newNamespace, '_');
+        return $this->nameHelper->sanitizeNamespace($newNamespace, '_');
     }
 
     private function generateNewName(
@@ -241,9 +230,9 @@ class MapFileVisitor extends NodeVisitorAbstract
         if ($newNamespace !== null) {
             $newNamespaceParts = explode('\\', $newNamespace);
 
-            return $this->keywordHelper->sanitizeNameWithPrefix($newName, end($newNamespaceParts));
+            return $this->nameHelper->sanitizeNameWithPrefix($newName, end($newNamespaceParts));
         } else {
-            return $this->keywordHelper->sanitizeNameWithSuffix($newName, '_');
+            return $this->nameHelper->sanitizeNameWithSuffix($newName, '_');
         }
     }
 
@@ -251,7 +240,6 @@ class MapFileVisitor extends NodeVisitorAbstract
         ?string $newNamespace,
         string|array $newName,
         string $includesDirPath,
-        string $originalFilePath,
         Node $node
     ): string {
         if (
@@ -259,25 +247,11 @@ class MapFileVisitor extends NodeVisitorAbstract
             || $node instanceof Node\Stmt\Const_
             || $node instanceof Node\Stmt\If_
         ) {
-            $declarePrefix = [];
+            $includeSuffix = $this->nodeHelper->hasNoBlockModeDeclare([$node])
+                ? '.' . uniqid()
+                : '';
 
-            foreach ($this->openDeclares as $openDeclare) {
-                foreach ($openDeclare->declares as $declare) {
-                    $declarePrefix[] = $declare->key
-                        .(property_exists($declare->value, 'value') ? $declare->value->value : '');
-                }
-            }
-
-            if (count($declarePrefix) > 0) {
-                $declarePrefix = array_unique($declarePrefix);
-                sort($declarePrefix);
-            }
-
-            return $includesDirPath.'/include.'.substr(
-                sha1(implode('', $declarePrefix).$originalFilePath),
-                0,
-                7
-            ).'.php';
+            return $includesDirPath.'/include'. $includeSuffix .'.php';
         }
 
         $pathFromNamespace = str_replace('\\', '/', $newNamespace);
@@ -299,6 +273,11 @@ class MapFileVisitor extends NodeVisitorAbstract
             || $node instanceof Node\Stmt\Const_
             || $node instanceof Node\Stmt\If_
         );
+    }
+
+    private function isClassLike(Node $node): bool
+    {
+        return $node instanceof Node\Stmt\ClassLike;
     }
 
     private function hasRisky(
@@ -351,7 +330,7 @@ class MapFileVisitor extends NodeVisitorAbstract
 
     private function getNamespacedName(Node\Stmt\ClassLike|Node\Stmt\Function_|Node\Const_ $node): Node\Name
     {
-        $currentNamespace = $this->nameContext->getNamespace();
+        $currentNamespace = $this->currentNameContext->getNamespace();
 
         return $node->namespacedName ?? Name::concat($currentNamespace, (string)$node?->name);
     }
@@ -378,16 +357,6 @@ class MapFileVisitor extends NodeVisitorAbstract
         $node = $node instanceof Node\Stmt\Expression ? $node->expr : $node;
 
         return $node::class;
-    }
-
-    public function leaveNode(Node $node)
-    {
-        // No block declare have global scope
-        if ($node instanceof Node\Stmt\Declare_ && $node->stmts !== null && in_array($node, $this->openDeclares)) {
-            unset($this->openDeclares[array_search($node, $this->openDeclares)]);
-        }
-
-        return null;
     }
 
     /**

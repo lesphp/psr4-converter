@@ -1,30 +1,17 @@
 <?php
 
-namespace LesPhp\PSR4Converter\Console;
+namespace LesPhp\PSR4Converter\Inspector;
 
-use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
-use LesPhp\PSR4Converter\Mapper\Result\StatementDetailsInterface;
 use Symfony\Component\Console\Helper\Table;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Filesystem\Filesystem;
 
-class MapperDumper
+class TableDumper implements DumperInterface
 {
-    public function dumpResult(MappedResult $mappedResult, OutputInterface $output): void
-    {
-        $this->dumpInfoTable($mappedResult->getNoRisky(), $mappedResult->getSrcPath(), $output);
-
-        $output->writeln("Risky conversions");
-
-        if ($mappedResult->hasRisky()) {
-            $this->dumpInfoTable($mappedResult->getRisky(), $mappedResult->getSrcPath(), $output);
-        }
-    }
-
     /**
-     * @param StatementDetailsInterface[] $mappedStatementInfos
+     * @inheritDoc
      */
-    public function dumpInfoTable(array $mappedStatementInfos, string $srcRootPath, OutputInterface $output): void
+    public function dumpStmts(array $mappedStatementInfos, string $srcRootPath, OutputInterface $output): void
     {
         $filesystem = new Filesystem();
         $table = new Table($output);

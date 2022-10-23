@@ -6,8 +6,8 @@ use PhpParser\Parser;
 
 class AutoloaderFactory implements AutoloaderFactoryInterface
 {
-    public function createAutoloader(): AutoloaderInterface
+    public function createAutoloader(Parser $parser): AutoloaderInterface
     {
-        return new Autoloader();
+        return new Autoloader($parser);
     }
 }

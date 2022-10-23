@@ -1,8 +1,8 @@
 <?php
 
-namespace LesPhp\PSR4Converter\Converter\Doc;
+namespace LesPhp\PSR4Converter\Parser\Naming\Doc;
 
-use LesPhp\PSR4Converter\Parser\CustomNameContext;
+use LesPhp\PSR4Converter\Parser\Naming\CustomNameContext;
 use PhpParser\Node\Stmt\Use_;
 use PHPStan\PhpDocParser\Ast\Node;
 use PHPStan\PhpDocParser\Ast\PhpDoc\GenericTagValueNode;
@@ -22,7 +22,7 @@ class AnnotationTagNode extends PhpDocTagNode
 
     /**
      * @param Node $node
-     * @param CustomNameContext $nameContext
+     * @param \LesPhp\PSR4Converter\Parser\Naming\CustomNameContext $nameContext
      * @return bool
      */
     public static function isApplicableFor(PhpDocTagNode $node, CustomNameContext $nameContext): bool
