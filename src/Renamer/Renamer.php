@@ -36,7 +36,8 @@ class Renamer implements RenamerInterface
         foreach ($finder as $refactoringFile) {
             $stmts = $this->parser->parse($refactoringFile->getContents());
 
-            $stmts = $this->nameManager->replaceFullyQualifiedNames($mappedResult, $stmts);
+            $stmts = $this->nameManager->replaceFullyQualifiedNames($stmts);
+            $stmts = $this->nameManager->replaceNewNames($stmts, $mappedResult);
             $stmts = $this->nameManager->createAliases($stmts);
 
             $this->dumpTargetFile($stmts, $refactoringFile->getRealPath());

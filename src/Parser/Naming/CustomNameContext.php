@@ -2,6 +2,7 @@
 
 namespace LesPhp\PSR4Converter\Parser\Naming;
 
+use PhpParser\ErrorHandler;
 use PhpParser\NameContext as PhpParserNameContext;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Use_;
@@ -38,6 +39,14 @@ class CustomNameContext extends PhpParserNameContext
 
     protected bool $enabledChangeMonitor = false;
 
+    public function __construct(
+        ErrorHandler $errorHandler,
+        private readonly NameHelper $nameHelper
+    )
+    {
+        parent::__construct($errorHandler);
+    }
+
     public function getAliasForName(Name\FullyQualified $name, int $type): ?string
     {
         if (
@@ -49,13 +58,7 @@ class CustomNameContext extends PhpParserNameContext
 
         if (isset($this->origAliases[$type])) {
             foreach ($this->origAliases[$type] as $alias => $fullName) {
-                if ($type === Use_::TYPE_CONSTANT) {
-                    if ($this->normalizeConstName($name->toString()) === $this->normalizeConstName(
-                            $fullName->toString()
-                        )) {
-                        return $alias;
-                    }
-                } elseif ($name->toLowerString() === $fullName->toLowerString()) {
+                if ($this->nameHelper->lookupNameByType($name->toString(), $type) === $this->nameHelper->lookupNameByType($fullName->toString(), $type)) {
                     return $alias;
                 }
             }
@@ -256,13 +259,7 @@ class CustomNameContext extends PhpParserNameContext
 
         /** @var Name\FullyQualified $referencedName */
         foreach ($this->references[$type][$this->getAliasLookupName($name, $type)] as $referencedName) {
-            if ($type === Use_::TYPE_CONSTANT) {
-                if ($this->normalizeConstName($fullyQualified->toString()) === $this->normalizeConstName(
-                        $referencedName->toString()
-                    )) {
-                    return true;
-                }
-            } elseif ($fullyQualified->toLowerString() === $referencedName->toLowerString()) {
+            if ($this->nameHelper->lookupNameByType($fullyQualified->toString(), $type) === $this->nameHelper->lookupNameByType($referencedName->toString(), $type)) {
                 return true;
             }
         }
@@ -295,20 +292,5 @@ class CustomNameContext extends PhpParserNameContext
         } else {
             return strtolower($aliasName);
         }
-    }
-
-    private function normalizeConstName(string $name): string
-    {
-        $nsSeparatorPos = strrpos($name, '\\');
-
-        if ($nsSeparatorPos === false) {
-            return $name;
-        }
-
-        // Constants have case-insensitive namespace and case-sensitive short-name
-        $ns = substr($name, 0, $nsSeparatorPos);
-        $shortName = substr($name, $nsSeparatorPos + 1);
-
-        return strtolower($ns).'\\'.$shortName;
     }
 }

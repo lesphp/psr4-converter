@@ -2,7 +2,7 @@
 
 namespace LesPhp\PSR4Converter\Parser\Naming;
 
-use PhpParser\Node\Stmt\DeclareDeclare;
+use PhpParser\Node\Stmt\Use_;
 
 class NameHelper
 {
@@ -125,5 +125,25 @@ class NameHelper
     public function sanitizeNameWithPrefix(string $name, string $prefix): string
     {
         return $this->isValidNamespaceComponent($name) ? $name : $prefix.$name;
+    }
+
+    public function lookupNameByType(string $name, $type): string
+    {
+        $nsSeparatorPos = strrpos($name, '\\');
+        // Constants have case-insensitive namespace and case-sensitive short-name
+        $isConstant = Use_::TYPE_CONSTANT === $type;
+
+        if ($nsSeparatorPos === false) {
+            return $isConstant ? $name : strtolower($name);
+        }
+
+        $ns = strtolower(substr($name, 0, $nsSeparatorPos));
+        $shortName = substr($name, $nsSeparatorPos + 1);
+
+        if (!$isConstant) {
+            $shortName = strtolower($shortName);
+        }
+
+        return $ns.'\\'.$shortName;
     }
 }

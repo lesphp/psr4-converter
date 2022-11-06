@@ -23,9 +23,7 @@ class ExtractMappedUnitVisitor extends AbstractNodeVisitor
      */
     public function __construct(
         private readonly MappedUnit $mappedUnit,
-        private readonly MappedResult $mappedResult,
-        private readonly bool $createAliases,
-        private readonly array $additionalMappedResults = []
+        private readonly bool $createAliases
     ) {
         parent::__construct();
     }
@@ -35,7 +33,7 @@ class ExtractMappedUnitVisitor extends AbstractNodeVisitor
         $this->reachedTargetUnit = false;
         $this->openedDeclares = [];
 
-        return $this->nameManager->replaceFullyQualifiedNames($this->mappedResult, $nodes, $this->additionalMappedResults);
+        return null;
     }
 
     public function enter(Node $node)

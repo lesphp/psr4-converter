@@ -6,7 +6,6 @@ use LesPhp\PSR4Converter\Converter\Node\NodeManager;
 use LesPhp\PSR4Converter\Exception\IncompatibleMergeFilesException;
 use LesPhp\PSR4Converter\Mapper\Result\MappedFile;
 use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
-use LesPhp\PSR4Converter\Mapper\Result\MappedUnit;
 use LesPhp\PSR4Converter\Parser\Naming\NameManager;
 use PhpParser\Node;
 use PhpParser\Parser;
@@ -41,7 +40,10 @@ class Converter implements ConverterInterface
         }
 
         foreach ($mappedFile->getUnits() as $mappedUnit) {
-            $unitStmts = $this->extractUnitStmts($mappedUnit, $mappedResult, $originalFileContent, $createAliases, $additionalMappedResults);
+            $unitStmts = $this->parser->parse($originalFileContent);
+            $unitStmts = $this->nameManager->replaceFullyQualifiedNames($unitStmts);
+            $unitStmts = $this->nameManager->replaceNewNames($unitStmts, $mappedResult, $additionalMappedResults);
+            $unitStmts = $this->nodeManager->extract($mappedUnit, $unitStmts, $createAliases);
             $unitStmts = $this->nameManager->createAliases($unitStmts);
             $targetFilePath = $this->destinationPath . '/' .
                 ($this->ignoreVendorNamespacePath ? $mappedUnit->getTargetFileWithoutVendor() : $mappedUnit->getTargetFile());
@@ -107,16 +109,5 @@ class Converter implements ConverterInterface
         $filesystem->mkdir(dirname($targetFilePath));
 
         $filesystem->dumpFile($targetFilePath, $prettyPrinter->prettyPrintFile($stmts));
-    }
-
-    /**
-     * @param MappedResult[] $additionalMappedResults
-     * @return Node[]
-     */
-    private function extractUnitStmts(MappedUnit $mappedUnit, MappedResult $mappedResult, string $originalFileContent, bool $createAliases, array $additionalMappedResults = []): array
-    {
-        $stmts = $this->parser->parse($originalFileContent);
-
-        return $this->nodeManager->extract($mappedUnit, $mappedResult, $stmts, $createAliases, $additionalMappedResults);
     }
 }

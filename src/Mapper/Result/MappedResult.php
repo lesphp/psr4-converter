@@ -4,6 +4,7 @@ namespace LesPhp\PSR4Converter\Mapper\Result;
 
 use LesPhp\PropertyInfo\TypedArray;
 use LesPhp\PSR4Converter\Exception\MapperConflictException;
+use LesPhp\PSR4Converter\Parser\Naming\NameHelper;
 use Symfony\Component\Serializer\Annotation\Ignore;
 use PhpParser\Node;
 
@@ -20,12 +21,6 @@ class MappedResult
      */
     #[Ignore]
     private array $errors = [];
-
-    /**
-     * @var array<int, array<string, string>>
-     */
-    #[Ignore]
-    private readonly array $convertedNamesMap;
 
     /**
      * @param MappedFile[] $files
@@ -47,8 +42,6 @@ class MappedResult
 
             $this->files[] = $mappedFile;
         }
-
-        $this->initConvertedNames();
     }
 
     public function getPhpParserKind(): int
@@ -185,46 +178,7 @@ class MappedResult
     /**
      * @return array<int, array<string, string>>
      */
-    public function getConvertedNamesMap(): array
-    {
-        return $this->convertedNamesMap;
-    }
-
-    /**
-     * @param MappedResult[] $mappedResults
-     * @return array<int, array<string, string>>
-     */
-    public function mergeConvertedNamesMap(array $mappedResults): array
-    {
-        $mergedConvertedNamesMap = $this->convertedNamesMap;
-        $types = [Node\Stmt\Use_::TYPE_NORMAL, Node\Stmt\Use_::TYPE_FUNCTION, Node\Stmt\Use_::TYPE_CONSTANT];
-
-        foreach ($mappedResults as $mappedResult) {
-            $otherConvertedNamesMap = $mappedResult->getConvertedNamesMap();
-
-            foreach ($types as $type) {
-                $mergedConvertedNamesMap[$type] = array_merge($mergedConvertedNamesMap[$type], $otherConvertedNamesMap[$type]);
-            }
-        }
-
-        return $mergedConvertedNamesMap;
-    }
-
-    /**
-     * @throws MapperConflictException
-     */
-    private function checkConflictExclusiveUnits(MappedUnit $unit): void
-    {
-        if ($unit->getNewName() === null) {
-            return;
-        }
-
-        foreach ($this->files as $file) {
-            $file->checkConflictExclusiveUnits($unit);
-        }
-    }
-
-    private function initConvertedNames(): void
+    public function getConvertedNamesMap(NameHelper $nameHelper): array
     {
         $convertedNamesMap = [
             Node\Stmt\Use_::TYPE_NORMAL => [],
@@ -248,17 +202,51 @@ class MappedResult
 
             array_walk(
                 $types,
-                function ($type, $i) use (&$convertedNamesMap, $newFullQualifiedNames, $originalFullQualifiedNames) {
+                function ($type, $i) use (&$convertedNamesMap, $newFullQualifiedNames, $originalFullQualifiedNames, $nameHelper) {
                     if ($type === Node\Stmt\Use_::TYPE_UNKNOWN) {
                         return;
                     }
 
-                    $convertedNamesMap[$type][$newFullQualifiedNames[$i]] = $originalFullQualifiedNames[$i];
+                    $convertedNamesMap[$type][$newFullQualifiedNames[$i]] = $nameHelper->lookupNameByType($originalFullQualifiedNames[$i], $type);
                 }
             );
         }
 
-        $this->convertedNamesMap = $convertedNamesMap;
+        return $convertedNamesMap;
+    }
+
+    /**
+     * @param MappedResult[] $mappedResults
+     * @return array<int, array<string, string>>
+     */
+    public function mergeConvertedNamesMap(array $mappedResults, NameHelper $nameHelper): array
+    {
+        $mergedConvertedNamesMap = $this->getConvertedNamesMap($nameHelper);
+        $types = [Node\Stmt\Use_::TYPE_NORMAL, Node\Stmt\Use_::TYPE_FUNCTION, Node\Stmt\Use_::TYPE_CONSTANT];
+
+        foreach ($mappedResults as $mappedResult) {
+            $otherConvertedNamesMap = $mappedResult->getConvertedNamesMap($nameHelper);
+
+            foreach ($types as $type) {
+                $mergedConvertedNamesMap[$type] = array_merge($mergedConvertedNamesMap[$type], $otherConvertedNamesMap[$type]);
+            }
+        }
+
+        return $mergedConvertedNamesMap;
+    }
+
+    /**
+     * @throws MapperConflictException
+     */
+    private function checkConflictExclusiveUnits(MappedUnit $unit): void
+    {
+        if ($unit->getNewName() === null) {
+            return;
+        }
+
+        foreach ($this->files as $file) {
+            $file->checkConflictExclusiveUnits($unit);
+        }
     }
 
     private function getUseTypeByStmtClass(string $stmtClass): int

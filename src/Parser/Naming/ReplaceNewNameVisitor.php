@@ -3,15 +3,20 @@
 namespace LesPhp\PSR4Converter\Parser\Naming;
 
 use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
-use LesPhp\PSR4Converter\Parser\Naming\Doc\Visitor\ReplaceFullyQualifiedNameVisitor as DocReplaceFullyQualifiedNameVisitor;
+use LesPhp\PSR4Converter\Parser\Naming\Doc\Visitor\ReplaceNewNameVisitor as DocReplaceNewNameVisitor;
 use LesPhp\PSR4Converter\Parser\Node\AbstractNodeVisitor;
 use PhpParser\Node;
 use PhpParser\Node\Name;
 use PhpParser\Node\Name\FullyQualified;
 use PhpParser\NodeTraverser;
 
-class ReplaceFullyQualifiedNameVisitor extends AbstractNodeVisitor
+class ReplaceNewNameVisitor extends AbstractNodeVisitor
 {
+    /**
+     * @var array<int, array<string, string>>
+     */
+    private array $convertedNamesMap;
+
     /**
      * @param MappedResult[] $additionalMappedResults
      */
@@ -21,6 +26,8 @@ class ReplaceFullyQualifiedNameVisitor extends AbstractNodeVisitor
     )
     {
         parent::__construct();
+
+        $this->convertedNamesMap = $this->mappedResult->mergeConvertedNamesMap($this->additionalMappedResults, $this->nameHelper);
     }
 
     public function enter(Node $node)
@@ -30,7 +37,7 @@ class ReplaceFullyQualifiedNameVisitor extends AbstractNodeVisitor
         if ($docNode !== null) {
             $traversedPhpDoc = $this->traversePhpDoc(
                 $docNode,
-                new DocReplaceFullyQualifiedNameVisitor(
+                new DocReplaceNewNameVisitor(
                     $this->nameHelper, $this->currentNameContext, $this->mappedResult, $this->additionalMappedResults
                 )
             );
@@ -64,26 +71,18 @@ class ReplaceFullyQualifiedNameVisitor extends AbstractNodeVisitor
             return NodeTraverser::DONT_TRAVERSE_CHILDREN;
         }
 
-        if ($node instanceof Node\Expr\FuncCall && $node->name instanceof Name && !$node->name->isFullyQualified()) {
+        if ($node instanceof Node\Expr\FuncCall && $node->name instanceof Name && $node->name->isFullyQualified()) {
             $node->name = $this->replaceName($node->name, Node\Stmt\Use_::TYPE_FUNCTION);
 
-            if (!$node->name->isFullyQualified()) {
-                $node->name->setAttribute('ignoreFullyQualify', true);
-            }
-
             return $node;
-        } elseif ($node instanceof Node\Expr\ConstFetch && !$node->name->isFullyQualified()) {
+        } elseif ($node instanceof Node\Expr\ConstFetch && $node->name->isFullyQualified()) {
             $node->name = $this->replaceName($node->name, Node\Stmt\Use_::TYPE_CONSTANT);
-
-            if (!$node->name->isFullyQualified()) {
-                $node->name->setAttribute('ignoreFullyQualify', true);
-            }
 
             return $node;
         } elseif (
             $node instanceof Node\Name
             && !$node->isSpecialClassName()
-            && !$node->getAttribute('ignoreFullyQualify')
+            && $node->isFullyQualified()
         ) {
             return $this->replaceName($node, Node\Stmt\Use_::TYPE_NORMAL);
         }
@@ -91,15 +90,12 @@ class ReplaceFullyQualifiedNameVisitor extends AbstractNodeVisitor
         return $node;
     }
 
-    private function replaceName(Name $name, int $type): Name
+    private function replaceName(FullyQualified $name, int $type): Name
     {
-        $convertedNamesMap = $this->mappedResult->mergeConvertedNamesMap($this->additionalMappedResults);
-        $resolvedName = $name->isFullyQualified() ? $name : $name->getAttribute('resolvedName');
+        $newName = array_search($this->nameHelper->lookupNameByType($name->toString(), $type), $this->convertedNamesMap[$type]);
 
-        if ($resolvedName !== null) {
-            $newName = array_search($resolvedName->toString(), $convertedNamesMap[$type]);
-
-            return $newName !== false ? new FullyQualified($newName) : $resolvedName;
+        if ($newName !== false) {
+            return new FullyQualified($newName);
         }
 
         return $name;
@@ -108,13 +104,11 @@ class ReplaceFullyQualifiedNameVisitor extends AbstractNodeVisitor
     private function replaceImportName(Node\Stmt\UseUse $useUse, int $useType): void
     {
         $type = $useUse->type | $useType;
-        $convertedNamesMap = $this->mappedResult->mergeConvertedNamesMap($this->additionalMappedResults);
-        $newName = array_search($useUse->name->toString(), $convertedNamesMap[$type]);
+        $newName = array_search($this->nameHelper->lookupNameByType($useUse->name->toString(), $type), $this->convertedNamesMap[$type]);
         $hasOldAlias = $useUse->alias !== null;
         $oldImportAlias = $useUse->alias?->toString() ?? $useUse->name->getLast();
 
         if ($newName !== false) {
-
             $useUse->name = new Name($newName);
 
             if ($hasOldAlias || $useUse->name->getLast() === $oldImportAlias) {

@@ -14,6 +14,8 @@ class CustomNameResolver extends PhpParserNameResolver
 
     private ErrorHandler $errorHandler;
 
+    private NameHelper $nameHelper;
+
     public function __construct(ErrorHandler $errorHandler = null, array $options = [])
     {
         $errorHandler = $errorHandler ?? new ErrorHandler\Throwing();
@@ -21,15 +23,16 @@ class CustomNameResolver extends PhpParserNameResolver
         parent::__construct($errorHandler, $options);
 
         $this->errorHandler = $errorHandler;
+        $this->nameHelper = new NameHelper();
 
-        $this->nameContext = new CustomNameContext($errorHandler);
+        $this->nameContext = new CustomNameContext($errorHandler, $this->nameHelper);
         $this->namespacedNameContext = new NamespacedNameContext();
     }
 
     public function enterNode(Node $node)
     {
         if ($node instanceof Node\Stmt\Namespace_) {
-            $this->nameContext = new CustomNameContext($this->errorHandler);
+            $this->nameContext = new CustomNameContext($this->errorHandler, $this->nameHelper);
 
             $this->namespacedNameContext->addNameContext($this->nameContext, $node);
         }

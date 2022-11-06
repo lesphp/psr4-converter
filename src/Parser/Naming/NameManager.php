@@ -24,10 +24,9 @@ class NameManager
 
     /**
      * @param Node[] $nodes
-     * @param MappedResult[] $additionalMappedResults
      * @return Node[]
      */
-    public function replaceFullyQualifiedNames(MappedResult $mappedResult, array $nodes, array $additionalMappedResults = []): array
+    public function replaceFullyQualifiedNames(array $nodes): array
     {
         $traverser = new NodeTraverser();
         $nameResolver = new NameResolver(null, [
@@ -36,7 +35,26 @@ class NameManager
         ]);
 
         $traverser->addVisitor($nameResolver);
-        $traverser->addVisitor(new ReplaceFullyQualifiedNameVisitor($mappedResult, $additionalMappedResults));
+        $traverser->addVisitor(new FullyQualifierNameVisitor());
+
+        return $traverser->traverse($nodes);
+    }
+
+    /**
+     * @param Node[] $nodes
+     * @param MappedResult[] $additionalMappedResults
+     * @return Node[]
+     */
+    public function replaceNewNames(array $nodes, MappedResult $mappedResult, array $additionalMappedResults = []): array
+    {
+        $traverser = new NodeTraverser();
+        $nameResolver = new NameResolver(null, [
+            'preserveOriginalNames' => false,
+            'replaceNodes' => false,
+        ]);
+
+        $traverser->addVisitor($nameResolver);
+        $traverser->addVisitor(new ReplaceNewNameVisitor($mappedResult, $additionalMappedResults));
 
         return $traverser->traverse($nodes);
     }
