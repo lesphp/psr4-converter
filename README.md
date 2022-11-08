@@ -77,3 +77,9 @@ Use the rename command like this `psr4-converter rename /tmp/.psr4-converter.jso
 The convert command already rename the converted code, so the renamed command is useful only to rename another already existent code.
 
 Use the `psr4-converter rename --help` command to get more details on the arguments and possibilities of the command.
+
+### Inspecting
+
+Using the mapping file it is possible to inspect the mapped changes. Use the inspect command like this `psr4-converter inspect /tmp/.psr4-converter.json`.
+
+Use the `psr4-converter inspect --help` command to get more details on the arguments and possibilities of the command.
