@@ -1,13 +1,15 @@
 {
   "name": "lesphp/psr4-converter",
-  "description": "A tool to facility converting code to PSR-4.",
+  "description": "A tool to automatically converts PSR-0 and non-standard autoload to PSR-4.",
   "keywords": [
     "PSR-0",
     "PSR-4",
     "namespace",
+    "autoload",
     "convert"
   ],
   "license": "MIT",
+  "bin": ["bin/psr4-converter"],
   "autoload": {
     "psr-4": {
       "LesPhp\\PSR4Converter\\": "src/"
