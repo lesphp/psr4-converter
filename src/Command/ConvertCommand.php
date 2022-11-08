@@ -8,7 +8,6 @@ use LesPhp\PSR4Converter\Exception\InvalidHashException;
 use LesPhp\PSR4Converter\Parser\CustomEmulativeLexer;
 use LesPhp\PSR4Converter\Mapper\Mapper;
 use LesPhp\PSR4Converter\Mapper\Result\Serializer\SerializerInterface;
-use LesPhp\PSR4Converter\Renamer\RenamerFactoryInterface;
 use PhpParser\ParserFactory;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputArgument;

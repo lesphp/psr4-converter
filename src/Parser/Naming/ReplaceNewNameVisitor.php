@@ -79,11 +79,7 @@ class ReplaceNewNameVisitor extends AbstractNodeVisitor
             $node->name = $this->replaceName($node->name, Node\Stmt\Use_::TYPE_CONSTANT);
 
             return $node;
-        } elseif (
-            $node instanceof Node\Name
-            && !$node->isSpecialClassName()
-            && $node->isFullyQualified()
-        ) {
+        } elseif ($node instanceof FullyQualified && !$node->isSpecialClassName()) {
             return $this->replaceName($node, Node\Stmt\Use_::TYPE_NORMAL);
         }
 
