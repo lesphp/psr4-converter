@@ -1,7 +1,7 @@
 # PSR-4 Converter
 
 PSR-4 Converter is a tool to automate the conversion of PSR-0 or non-standard codes to PSR-4 compliance codes.
-To convert the php code, this tool statically parses the code and then all the code is scanned to find the definitions that will be changed.
+To convert the php code (support codebase with PHP >= 5.0), this tool statically parses the code and then all the code is scanned to find the definitions that will be changed.
 Making legacy code compiler with PSR-4 involves more steps than renaming namespaces, this tool solves the following problems with this conversion:
 
 1. Ensure that there is only one class per php file;
