@@ -44,7 +44,7 @@ class InspectCommand extends Command
                 self::OUTPUT_FORMAT,
                 'o',
                 InputOption::VALUE_OPTIONAL,
-                self::OUTPUT_TABLE_OPTION . 'or ' . self::OUTPUT_ARRAY_NAMES_CHANGES,
+                self::OUTPUT_TABLE_OPTION . ' or ' . self::OUTPUT_ARRAY_NAMES_CHANGES,
                 self::OUTPUT_TABLE_OPTION
             );
     }

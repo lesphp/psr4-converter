@@ -31,6 +31,6 @@ class NamesChangedDumper implements DumperInterface
             }
         }
 
-        $output->writeln(var_export($namesChanged, true));
+        $output->writeln(json_encode($namesChanged, \JSON_THROW_ON_ERROR));
     }
 }

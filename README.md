@@ -81,5 +81,6 @@ Use the `psr4-converter rename --help` command to get more details on the argume
 ### Inspecting
 
 Using the mapping file it is possible to inspect the mapped changes. Use the inspect command like this `psr4-converter inspect /tmp/.psr4-converter.json`.
+Using the option `-o names-changes` is possible to get a json from changed names.
 
 Use the `psr4-converter inspect --help` command to get more details on the arguments and possibilities of the command.
