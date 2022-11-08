@@ -74,5 +74,6 @@ Use the `psr4-converter convert --help` command to get more details on the argum
 
 Using the mapping file it is possible to rename the mapped references, so the old names will be converted to the new names.
 Use the rename command like this `psr4-converter rename /tmp/.psr4-converter.json /path/to/destination`.
+The convert command already rename the converted code, so the renamed command is useful only to rename another already existent code.
 
 Use the `psr4-converter rename --help` command to get more details on the arguments and possibilities of the command.
