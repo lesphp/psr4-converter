@@ -176,8 +176,8 @@ class MapFileVisitor extends AbstractNodeVisitor
         }
 
         $prefixNamespace = (string)Name::concat(
-            trim($vendorNamespace) !== '' ? $vendorNamespace : null,
-            trim($originalNamespace) !== '' ? $originalNamespace : null
+            trim($vendorNamespace ?? '') !== '' ? $vendorNamespace : null,
+            trim($originalNamespace ?? '') !== '' ? $originalNamespace : null
         );
 
         if (
