@@ -44,6 +44,8 @@ class MapCommand extends Command
 
     private const IGNORE_PATH = 'ignore-path';
 
+    private const IGNORE_ERRORS = 'ignore-errors';
+
     private const IGNORE_NAMESPACE = 'ignore-namespace';
 
     private const USE_PHP5 = 'use-php5';
@@ -100,6 +102,12 @@ class MapCommand extends Command
                 null,
                 InputOption::VALUE_NONE,
                 'append current namespace at vendor namespace'
+            )
+            ->addOption(
+                self::IGNORE_ERRORS,
+                null,
+                InputOption::VALUE_NONE,
+                'ignore map errors'
             )
             ->addOption(
                 self::FOLLOW_SYMLINK,
@@ -178,6 +186,7 @@ class MapCommand extends Command
         $phpParserKind = $input->getOption(self::USE_PHP5) ? ParserFactory::PREFER_PHP5 : ParserFactory::PREFER_PHP7;
         $dryRun = $input->getOption(self::DRY_RUN);
         $underscoreConversion = $input->getOption(self::UNDERSCORE_CONVERSION);
+        $ignoreErrors = $input->getOption(self::IGNORE_ERRORS);
         $ignoreNamespacedUnderscoreConversion = $input->getOption(self::IGNORE_NAMESPACED_UNDERSCORE_CONVERSION);
         $prefixNamespace = $input->getArgument(self::PREFIX_NAMESPACE);
         $srcPath = $input->getArgument(self::SRC_ARGUMENT);
@@ -242,7 +251,7 @@ class MapCommand extends Command
 
         $mappedResult = new MappedResult($phpParserKind, $srcRealPath, $includeDirPath, $mappedFiles);
 
-        if ($mappedResult->hasError()) {
+        if ($mappedResult->hasError() && !$ignoreErrors) {
             $errorOutput->writeln('There are errors on conversions attempts, fix it.');
 
             $statementsDumper->dumpStmts($mappedResult->getErrors(), $srcRealPath, $errorOutput);
