@@ -68,15 +68,42 @@ class Autoloader implements AutoloaderInterface
         $autoloadContentTemplate = <<<'EOF'
         <?php
 
-        spl_autoload_register(function($class) {
-            static $aliasMap = %s;
-        
-            if (isset($aliasMap[$class]) && class_exists($aliasMap[$class])) {
-                return true;
+        namespace LesPhp\PSR4Converter\Autoloader;
+
+        if (!class_exists(ConvertedNames::class, false)) {
+            class ConvertedNames {
+                private static array $convertedNames = [];
+
+                /**
+                 * @param array $map Key is the old name and value is the new name
+                 * @return void
+                 */
+                public static function addConvertedNames(array $map)
+                {
+                    static::$convertedNames = array_unique(array_merge(static::$convertedNames, $map));
+                }
+
+                /**
+                 * @return array Key is the old name and value is the new name
+                 */
+                public static function getConvertedNames(): array
+                {
+                    return static::$convertedNames;
+                }
             }
-        
-            return null;
-        });
+
+            spl_autoload_register(function ($class) {
+                $aliasMap = ConvertedNames::getConvertedNames();
+
+                if (isset($aliasMap[$class]) && class_exists($aliasMap[$class])) {
+                    return true;
+                }
+
+                return null;
+            });
+        }
+
+        ConvertedNames::addConvertedNames(%s);
         EOF;
 
         $stmts = $this->parser->parse(sprintf($autoloadContentTemplate, var_export($aliasMap, true)));
