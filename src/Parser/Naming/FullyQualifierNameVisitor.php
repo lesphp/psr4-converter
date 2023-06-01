@@ -45,6 +45,11 @@ class FullyQualifierNameVisitor extends AbstractNodeVisitor
             }
 
             return $node;
+        } elseif ($node instanceof Node\Stmt\Namespace_) {
+
+            $node->name?->setAttribute('ignoreFullyQualify', true);
+
+            return $node;
         } elseif (
             $node instanceof Node\Name
             && !$node->isSpecialClassName()
