@@ -88,13 +88,13 @@ class Mapper implements MapperInterface
                 $e->getMessage()
             );
 
-            return new MappedFile($filePath, $hasInclude, [], [$mappedError]);
+            return new MappedFile($filePath, $hasInclude, static::calculateHash($filePath), [], [$mappedError]);
         } catch (Error $e) {
             $startPos = $e->getAttributes()['startFilePos'] ?? -1;
             $endPos = $e->getAttributes()['endFilePos'] ?? -1;
             $mappedError = new MappedError($filePath, $e->getStartLine(), $startPos, $e->getEndLine(), $endPos, $e->getMessage());
 
-            return new MappedFile($filePath, $hasInclude, [], [$mappedError]);
+            return new MappedFile($filePath, $hasInclude, static::calculateHash($filePath), [], [$mappedError]);
         }
 
         $nodeManager = new NodeManager();
@@ -111,7 +111,7 @@ class Mapper implements MapperInterface
 
         $mappedUnits = $nodeManager->mapFile($mapperContext, $stmts);
 
-        return new MappedFile($filePath, $hasInclude, $mappedUnits);
+        return new MappedFile($filePath, $hasInclude, static::calculateHash($filePath), $mappedUnits);
     }
 
     /**

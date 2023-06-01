@@ -4,13 +4,10 @@ namespace LesPhp\PSR4Converter\Mapper\Result;
 
 use LesPhp\PropertyInfo\TypedArray;
 use LesPhp\PSR4Converter\Exception\MapperConflictException;
-use LesPhp\PSR4Converter\Mapper\Mapper;
 use Symfony\Component\Serializer\Annotation\Ignore;
 
 class MappedFile
 {
-    private string $hash;
-
     /**
      * @var MappedUnit[]
      */
@@ -36,12 +33,11 @@ class MappedFile
     public function __construct(
         private readonly string $filePath,
         private readonly bool $hasInclude,
+        private readonly string $hash,
         array $units,
         #[Ignore]
         private array $errors = []
     ) {
-        $this->hash = Mapper::calculateHash($filePath);
-
         foreach ($units as $mappedUnit) {
             try {
                 $this->checkConflictExclusiveUnits($mappedUnit);
