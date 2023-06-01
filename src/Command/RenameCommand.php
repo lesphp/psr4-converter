@@ -2,9 +2,7 @@
 
 namespace LesPhp\PSR4Converter\Command;
 
-use LesPhp\PSR4Converter\Exception\InvalidHashException;
 use LesPhp\PSR4Converter\Parser\CustomEmulativeLexer;
-use LesPhp\PSR4Converter\Mapper\Mapper;
 use LesPhp\PSR4Converter\Mapper\Result\Serializer\SerializerInterface;
 use LesPhp\PSR4Converter\Renamer\RenamerFactoryInterface;
 use PhpParser\ParserFactory;
@@ -89,12 +87,6 @@ class RenameCommand extends Command
         $lexer = new CustomEmulativeLexer();
         $parser = (new ParserFactory())->create($mappedResult->getPhpParserKind(), $lexer);
         $renamer = $this->renamerFactory->createRenamer($parser);
-
-        foreach ($mappedResult->getFiles() as $mappedFile) {
-            if ($mappedFile->getHash() !== Mapper::calculateHash($mappedFile->getFilePath())) {
-                throw new InvalidHashException($mappedFile->getFilePath());
-            }
-        }
 
         foreach ($destinationDirs as $additionalDir) {
             $renamer->rename($mappedResult, $additionalDir);
