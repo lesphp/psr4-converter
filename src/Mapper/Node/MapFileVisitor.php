@@ -172,7 +172,7 @@ class MapFileVisitor extends AbstractNodeVisitor
             && $vendorNamespace !== null
             && str_starts_with($originalNamespace, $vendorNamespace)
         ) {
-            $originalNamespace = substr($originalNamespace, strlen($vendorNamespace));
+            $originalNamespace = substr($originalNamespace, strlen($vendorNamespace . '\\'));
         }
 
         $prefixNamespace = (string)Name::concat(
