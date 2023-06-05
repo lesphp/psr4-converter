@@ -46,12 +46,16 @@ class MapFileVisitor extends AbstractNodeVisitor
 
         if ($this->isValidRootStatement($node)) {
             $filePath = $this->mapperContext->getFilePath();
+            $rootSourcePath = $this->mapperContext->getRootSourcePath();
+            $relativeFilePath = ltrim(substr($filePath, strlen($rootSourcePath)), DIRECTORY_SEPARATOR);
             $vendorNamespace = $this->mapperContext->getPrefixNamespace();
             $includesDirPath = $this->mapperContext->getIncludesDirPath();
             $isAppendNamespace = $this->mapperContext->isAppendNamespace();
             $ignoreNamespaces = $this->mapperContext->getIgnoreNamespaces();
             $originalNamespace = $this->currentNameContext->getNamespace()?->toString();
             $ignoreNamespacedUnderscoreConversion = $this->mapperContext->isIgnoreNamespacedUnderscoreConversion();
+            $pathBasedConversion = $this->mapperContext->isPathBasedConversion();
+            $forceNamesCamelCase = $this->mapperContext->isForceNamesCamelCase();
             $underscoreConversion = $this->mapperContext->isUnderscoreConversion()
                 && ($originalNamespace === null || !$ignoreNamespacedUnderscoreConversion);
             $isNamespaceIgnored = in_array($originalNamespace, $ignoreNamespaces, true)
@@ -61,15 +65,19 @@ class MapFileVisitor extends AbstractNodeVisitor
             $newNamespace = $isNamespaceIgnored ? $originalNamespace : $this->generateNewNamespace(
                 $originalNamespace,
                 $vendorNamespace,
+                $relativeFilePath,
                 $isAppendNamespace,
                 $underscoreConversion,
+                $pathBasedConversion,
+                $forceNamesCamelCase,
                 $node
             );
             $newName = $isNamespaceIgnored ? $originalName : $this->generateNewName(
                 $node,
                 $newNamespace,
                 $underscoreConversion,
-                true
+                $pathBasedConversion,
+                $forceNamesCamelCase
             );
             $targetFile = $this->generateTargetFile(
                 $newNamespace,
@@ -151,47 +159,55 @@ class MapFileVisitor extends AbstractNodeVisitor
     private function generateNewNamespace(
         ?string $originalNamespace,
         ?string $vendorNamespace,
+        string $relativeFilePath,
         bool $isAppendNamespace,
         bool $underscoreConversion,
+        bool $pathBasedConversion,
+        bool $forceNamesCamelCase,
         Node $node
     ): ?string {
-        if (
-            $originalNamespace === null
-            && (
-                $node instanceof Node\Stmt\Function_
-                || $node instanceof Node\Stmt\Const_
-                || $node instanceof Node\Stmt\If_
-            )
-        ) {
-            return null;
-        }
-
-        if (
-            !$isAppendNamespace
-            && $originalNamespace !== null
-            && $vendorNamespace !== null
-            && str_starts_with($originalNamespace, $vendorNamespace)
-        ) {
-            $originalNamespace = substr($originalNamespace, strlen($vendorNamespace . '\\'));
-        }
-
-        $prefixNamespace = (string)Name::concat(
-            trim($vendorNamespace ?? '') !== '' ? $vendorNamespace : null,
-            trim($originalNamespace ?? '') !== '' ? $originalNamespace : null
-        );
-
         if (
             $node instanceof Node\Stmt\Function_
             || $node instanceof Node\Stmt\Const_
             || $node instanceof Node\Stmt\If_
-            || !$underscoreConversion
         ) {
-            return $this->nameHelper->sanitizeNamespace($prefixNamespace, '_');
+            if ($originalNamespace === null) {
+                return null;
+            }
+
+            $newNamespace = trim($originalNamespace) !== '' ? $originalNamespace : null;
+        } else {
+            if ($pathBasedConversion) {
+                $newNamespace = str_replace(DIRECTORY_SEPARATOR, '\\', substr($relativeFilePath, 0, strrpos($relativeFilePath, DIRECTORY_SEPARATOR)));
+            } else {
+                $newNamespace = trim($originalNamespace ?? '') !== '' ? $originalNamespace : null;
+
+                if ($underscoreConversion) {
+                    $nodeName = property_exists($node, 'name') ? (string)$node?->name: '';
+                    $psr4FromPsr0 = str_replace('_', '\\', substr($nodeName, 0, strrpos($nodeName, '_')));
+                    $newNamespace .= $psr4FromPsr0 !== '' ? '\\'.$psr4FromPsr0 : '';
+                }
+            }
         }
 
-        $nodeName = property_exists($node, 'name') ? (string)$node?->name: '';
-        $psr4FromPsr0 = str_replace('_', '\\', substr($nodeName, 0, strrpos($nodeName, '_')));
-        $newNamespace = $prefixNamespace.($psr4FromPsr0 !== '' ? '\\'.$psr4FromPsr0 : '');
+        $newNamespace = ltrim($newNamespace, '\\');
+
+        if ($forceNamesCamelCase) {
+            $newNamespace = $this->forceNamesCamelCase($newNamespace);
+        }
+
+        if (
+            !$isAppendNamespace
+            && !empty($vendorNamespace)
+            && str_starts_with($newNamespace, $vendorNamespace)
+        ) {
+            $newNamespace = substr($newNamespace, strlen($vendorNamespace . '\\'));
+        }
+
+        $newNamespace = (string) Name::concat(
+            trim($vendorNamespace ?? '') !== '' ? $vendorNamespace : null,
+            !empty($newNamespace) ? $newNamespace : null
+        );
 
         return $this->nameHelper->sanitizeNamespace($newNamespace, '_');
     }
@@ -200,13 +216,14 @@ class MapFileVisitor extends AbstractNodeVisitor
         Node $node,
         ?string $newNamespace,
         bool $underscoreConversion,
-        bool $fixCase
+        bool $pathBasedConversion,
+        bool $forceNamesCamelCase
     ): string|array {
         $node = $node instanceof Node\Stmt\Expression ? $node->expr : $node;
 
         if ($node instanceof Node\Stmt\If_) {
             return array_map(
-                fn (Node $conditionalNode) => $this->generateNewName($conditionalNode, $newNamespace, false, false),
+                fn (Node $conditionalNode) => $this->generateNewName($conditionalNode, $newNamespace, false, false, false),
                 (new NodeManager())->getAllConditionalStmts($node)
             );
         } elseif ($node instanceof Node\Stmt\Function_) {
@@ -219,13 +236,13 @@ class MapFileVisitor extends AbstractNodeVisitor
 
         $nodeName = property_exists($node, 'name') ? (string)$node?->name: '';
 
-        if (!$underscoreConversion || !str_contains($nodeName, '_')) {
+        if ($pathBasedConversion || !$underscoreConversion || !str_contains($nodeName, '_')) {
             $newName = $nodeName;
         } else {
             $newName = substr($nodeName, strrpos($nodeName, '_') + 1);
         }
 
-        $newName = $fixCase ? ucfirst($newName) : $newName;
+        $newName = $forceNamesCamelCase ? $this->forceNamesCamelCase($newName) : $newName;
 
         if ($newNamespace !== null) {
             $newNamespaceParts = explode('\\', $newNamespace);
@@ -257,6 +274,15 @@ class MapFileVisitor extends AbstractNodeVisitor
         $pathFromNamespace = str_replace('\\', '/', $newNamespace);
 
         return ltrim($pathFromNamespace.'/'.$newName.'.php', '/');
+    }
+
+    private function forceNamesCamelCase(string $namespacedName): string
+    {
+        $nameParts = explode('\\', $namespacedName);
+
+        $nameParts = array_map(fn ($namePart) => str_replace('_', '', ucwords($namePart, '_')), $nameParts);
+
+        return implode('\\', $nameParts);
     }
 
     private function removeVendorPath(string $targetFile, ?string $vendorNamespace): string

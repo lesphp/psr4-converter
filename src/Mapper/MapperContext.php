@@ -16,7 +16,9 @@ class MapperContext
         private readonly bool $appendNamespace,
         private readonly bool $underscoreConversion,
         private readonly bool $ignoreNamespacedUnderscoreConversion,
-        private readonly array $ignoreNamespaces
+        private readonly array $ignoreNamespaces,
+        private readonly bool $pathBasedConversion,
+        private readonly bool $forceNamesCamelCase
     ) {
     }
 
@@ -61,5 +63,21 @@ class MapperContext
     public function getIgnoreNamespaces(): array
     {
         return $this->ignoreNamespaces;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isPathBasedConversion(): bool
+    {
+        return $this->pathBasedConversion;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isForceNamesCamelCase(): bool
+    {
+        return $this->forceNamesCamelCase;
     }
 }

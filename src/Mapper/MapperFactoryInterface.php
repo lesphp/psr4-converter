@@ -21,6 +21,8 @@ interface MapperFactoryInterface
         bool $appendNamespace,
         bool $underscoreConversion,
         bool $ignoreNamespacedUnderscoreConversion,
-        array $ignoreNamespaces
+        array $ignoreNamespaces,
+        bool $pathBasedConversion,
+        bool $forceNamesCamelCase
     ): MapperInterface;
 }

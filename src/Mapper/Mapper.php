@@ -38,7 +38,9 @@ class Mapper implements MapperInterface
         private readonly bool $appendNamespace,
         private readonly bool $underscoreConversion,
         private readonly bool $ignoreNamespacedUnderscoreConversion,
-        array $ignoreNamespaces
+        array $ignoreNamespaces,
+        private readonly bool $pathBasedConversion,
+        private readonly bool $forceNamesCamelCase
     ) {
         if ($prefixNamespace !== null && !$this->keywordHelper->isValidNamespace($prefixNamespace)) {
             throw new InvalidNamespaceException();
@@ -106,7 +108,9 @@ class Mapper implements MapperInterface
             $this->appendNamespace,
             $this->underscoreConversion,
             $this->ignoreNamespacedUnderscoreConversion,
-            $this->ignoreNamespaces
+            $this->ignoreNamespaces,
+            $this->pathBasedConversion,
+            $this->forceNamesCamelCase
         );
 
         $mappedUnits = $nodeManager->mapFile($mapperContext, $stmts);

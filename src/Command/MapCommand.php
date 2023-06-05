@@ -56,6 +56,10 @@ class MapCommand extends Command
 
     private const IGNORE_NAMESPACED_UNDERSCORE_CONVERSION = 'ignore-namespaced-underscore';
 
+    private const PATH_BASED_CONVERSION = 'path-based-conversion';
+
+    private const FORCE_NAMES_CAMELCASE = 'force-names-camelcase';
+
     public const DEFAULT_MAP_FILENAME = '.psr4-converter.map.json';
 
     protected static $defaultName = 'map';
@@ -166,6 +170,18 @@ class MapCommand extends Command
                 null,
                 InputOption::VALUE_NONE,
                 'Ignore underscores for already namespaced statement.'
+            )
+            ->addOption(
+                self::PATH_BASED_CONVERSION,
+                null,
+                InputOption::VALUE_NONE,
+                'Makes conversion based on file path. Implies --'.self::IGNORE_NAMESPACED_UNDERSCORE_CONVERSION
+            )
+            ->addOption(
+                self::FORCE_NAMES_CAMELCASE,
+                null,
+                InputOption::VALUE_NONE,
+                'Force names parts to be camelCase.'
             );
     }
 
@@ -188,6 +204,8 @@ class MapCommand extends Command
         $underscoreConversion = $input->getOption(self::UNDERSCORE_CONVERSION);
         $ignoreErrors = $input->getOption(self::IGNORE_ERRORS);
         $ignoreNamespacedUnderscoreConversion = $input->getOption(self::IGNORE_NAMESPACED_UNDERSCORE_CONVERSION);
+        $pathBasedConversion = $input->getOption(self::PATH_BASED_CONVERSION);
+        $forceNamesCamelCase = $input->getOption(self::FORCE_NAMES_CAMELCASE);
         $prefixNamespace = $input->getArgument(self::PREFIX_NAMESPACE);
         $srcPath = $input->getArgument(self::SRC_ARGUMENT);
         $statementsDumper = new TableDumper();
@@ -239,7 +257,9 @@ class MapCommand extends Command
             $isAppendNamespace,
             $underscoreConversion,
             $ignoreNamespacedUnderscoreConversion,
-            $ignoreNamespaces
+            $ignoreNamespaces,
+            $pathBasedConversion,
+            $forceNamesCamelCase
         );
 
         /** @var MappedFile[] $mappedFiles */

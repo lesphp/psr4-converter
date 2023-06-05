@@ -17,7 +17,9 @@ class MapperFactory implements MapperFactoryInterface
         bool $appendNamespace,
         bool $underscoreConversion,
         bool $ignoreNamespacedUnderscoreConversion,
-        array $ignoreNamespaces
+        array $ignoreNamespaces,
+        bool $pathBasedConversion,
+        bool $forceNamesCamelCase
     ): MapperInterface {
         return new Mapper(
             new NameHelper(),
@@ -29,7 +31,9 @@ class MapperFactory implements MapperFactoryInterface
             $appendNamespace,
             $underscoreConversion,
             $ignoreNamespacedUnderscoreConversion,
-            $ignoreNamespaces
+            $ignoreNamespaces,
+            $pathBasedConversion,
+            $forceNamesCamelCase
         );
     }
 }
