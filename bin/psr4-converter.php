@@ -1,6 +1,7 @@
 <?php
 
 use LesPhp\PSR4Converter\Autoloader\AutoloaderFactory;
+use LesPhp\PSR4Converter\Command\ClearCommand;
 use LesPhp\PSR4Converter\Command\ConvertCommand;
 use LesPhp\PSR4Converter\Command\InspectCommand;
 use LesPhp\PSR4Converter\Command\MapCommand;
@@ -23,10 +24,12 @@ $convertCommand = new ConvertCommand($psr4ConverterFactory, $autoloaderFactory, 
 $mapCommand = new MapCommand($psr4MapperFactory, $resultSerializer);
 $renameCommand = new RenameCommand($psr4RenamerFactory, $resultSerializer);
 $inspectCommand = new InspectCommand($resultSerializer);
+$clearCommand = new ClearCommand($resultSerializer);
 
 $application->add($mapCommand);
 $application->add($inspectCommand);
 $application->add($convertCommand);
 $application->add($renameCommand);
+$application->add($clearCommand);
 
 $application->run();

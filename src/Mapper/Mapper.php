@@ -2,18 +2,21 @@
 
 namespace LesPhp\PSR4Converter\Mapper;
 
+use LesPhp\PSR4Converter\Exception\InvalidHashException;
 use LesPhp\PSR4Converter\Exception\InvalidNamespaceException;
 use LesPhp\PSR4Converter\Exception\InvalidRootStatementException;
 use LesPhp\PSR4Converter\Mapper\Node\MapFileVisitor;
 use LesPhp\PSR4Converter\Mapper\Node\NodeManager;
 use LesPhp\PSR4Converter\Mapper\Result\MappedError;
 use LesPhp\PSR4Converter\Mapper\Result\MappedFile;
+use LesPhp\PSR4Converter\Mapper\Result\MappedResult;
 use LesPhp\PSR4Converter\Parser\Naming\NameHelper;
 use PhpParser\Error;
 use PhpParser\Lexer;
 use PhpParser\Node;
 use PhpParser\NodeFinder;
 use PhpParser\Parser;
+use Symfony\Component\Filesystem\Filesystem;
 
 class Mapper implements MapperInterface
 {
@@ -63,6 +66,17 @@ class Mapper implements MapperInterface
     public static function calculateHash(string $filePath): string
     {
         return hash_file('sha256', $filePath);
+    }
+
+    public static function verifyHash(MappedResult $mappedResult): void
+    {
+        $filesystem = new Filesystem();
+
+        foreach ($mappedResult->getFiles() as $mappedFile) {
+            if (!$filesystem->exists($mappedFile->getFilePath()) || $mappedFile->getHash() !== Mapper::calculateHash($mappedFile->getFilePath())) {
+                throw new InvalidHashException($mappedFile->getFilePath());
+            }
+        }
     }
 
     public function map(string $filePath): MappedFile
