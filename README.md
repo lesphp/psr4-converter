@@ -41,8 +41,10 @@ You can install this library in several ways.
 The map command will generate a mapping json file containing all the information needed for the conversion,
 including all old and new name mappings.
 
-For example the following command `psr4-converter map "App" /path/to/source -m /tmp/.psr4-converter.json --append-namespace --underscore-conversion --ignore-namespaced-underscore -- ignore-path="ignored_relative_path"`
-will generate the mapping file `/tmp/.psr4-converter.json` with all conversions to the `/path/to/source` directory, will also:
+```shell
+psr4-converter map "App" /path/to/source -m /tmp/.psr4-converter.json --append-namespace --underscore-conversion --ignore-namespaced-underscore -- ignore-path="ignored_relative_path"
+```
+For example the above command will generate the mapping file `/tmp/.psr4-converter.json` with all conversions to the `/path/to/source` directory, will also:
 
 - Use the `App` vendor namespace for the new converted names, so a `\Old\Name` class will be `\App\Old\Name`;
 - With the `--underscore-conversion` option an `Old_Name2` class will become `\App\Old\Name2`;
@@ -55,7 +57,11 @@ Use the `psr4-converter map --help` command to get more details on the arguments
 
 ### Converting
 
-Using the mapping file it is possible to convert the code to a new directory through the command `psr4-converter convert /tmp/.psr4-converter.json /path/to/destination -m /tmp/.psr4-converter2.json --ignore-vendor-path --create-aliases --allow-risky`.
+Using the mapping file it is possible to convert the code to a new directory through the following command.
+```shell
+psr4-converter convert /tmp/.psr4-converter.json /path/to/destination -m /tmp/.psr4-converter2.json --ignore-vendor-path --create-aliases --allow-risky
+```
+
 It will convert the code mapped in `/tmp/.psr4-converter.json` to the `/path/to/destination` directory, will also:
 
 - Definitions that need to be statically included by composer will be created in `/path/to/destination/includes` .
@@ -74,7 +80,7 @@ Use the `psr4-converter convert --help` command to get more details on the argum
 
 Using the mapping file it is possible to rename the mapped references, so the old names will be converted to the new names.
 Use the rename command like this `psr4-converter rename /tmp/.psr4-converter.json /path/to/destination`.
-The convert command already rename the converted code, so the renamed command is useful only to rename another already existent code.
+The convert command already renames the converted code, so the rename command is useful only to rename another already existent code.
 
 Use the `psr4-converter rename --help` command to get more details on the arguments and possibilities of the command.
 
