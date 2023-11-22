@@ -12,7 +12,7 @@ use LesPhp\PSR4Converter\Mapper\Result\Serializer\Serializer;
 use LesPhp\PSR4Converter\Renamer\RenamerFactory;
 use Symfony\Component\Console\Application;
 
-require __DIR__.'/../vendor/autoload.php';
+require $_composer_autoload_path ?? __DIR__.'/../vendor/autoload.php';
 
 $application = new Application('PSR-4 Converter', '@package_version@');
 $psr4MapperFactory = new MapperFactory();
