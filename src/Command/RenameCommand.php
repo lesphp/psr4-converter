@@ -11,6 +11,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\ConsoleOutputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Finder\Finder;
 
 class RenameCommand extends Command
 {
@@ -88,8 +89,28 @@ class RenameCommand extends Command
         $parser = (new ParserFactory())->create($mappedResult->getPhpParserKind(), $lexer);
         $renamer = $this->renamerFactory->createRenamer($parser);
 
-        foreach ($destinationDirs as $additionalDir) {
-            $renamer->rename($mappedResult, $additionalDir);
+        foreach ($destinationDirs as $destinationDir) {
+            $finder = (new Finder())
+                ->in($destinationDir)
+                ->followLinks()
+                ->ignoreDotFiles(false)
+                ->ignoreVCSIgnored(false)
+                ->files()
+                ->name('*.php');
+
+            foreach ($finder as $refactoringFile) {
+                if ($output->isDebug()) {
+                    $output->writeln("Processing file: " . $refactoringFile->getRealPath());
+                }
+
+                try {
+                    $renamer->rename($mappedResult, $refactoringFile);
+                } catch (\Throwable $t) {
+                    $output->writeln("Error processing file: " . $refactoringFile->getRealPath());
+
+                    throw $t;
+                }
+            }
         }
 
         return Command::SUCCESS;

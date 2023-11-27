@@ -8,7 +8,7 @@ use PhpParser\Node;
 use PhpParser\Parser;
 use PhpParser\PrettyPrinter;
 use Symfony\Component\Filesystem\Filesystem;
-use Symfony\Component\Finder\Finder;
+use Symfony\Component\Finder\SplFileInfo;
 
 class Renamer implements RenamerInterface
 {
@@ -23,25 +23,15 @@ class Renamer implements RenamerInterface
     /**
      * @inheritDoc
      */
-    public function rename(MappedResult $mappedResult, string $destinationDir): void
+    public function rename(MappedResult $mappedResult, SplFileInfo $refactoringFile): void
     {
-        $finder = (new Finder())
-            ->in($destinationDir)
-            ->followLinks()
-            ->ignoreDotFiles(false)
-            ->ignoreVCSIgnored(false)
-            ->files()
-            ->name('*.php');
+        $stmts = $this->parser->parse($refactoringFile->getContents());
 
-        foreach ($finder as $refactoringFile) {
-            $stmts = $this->parser->parse($refactoringFile->getContents());
+        $stmts = $this->nameManager->replaceFullyQualifiedNames($stmts);
+        $stmts = $this->nameManager->replaceNewNames($stmts, $mappedResult);
+        $stmts = $this->nameManager->createAliases($stmts);
 
-            $stmts = $this->nameManager->replaceFullyQualifiedNames($stmts);
-            $stmts = $this->nameManager->replaceNewNames($stmts, $mappedResult);
-            $stmts = $this->nameManager->createAliases($stmts);
-
-            $this->dumpTargetFile($stmts, $refactoringFile->getRealPath());
-        }
+        $this->dumpTargetFile($stmts, $refactoringFile->getRealPath());
     }
 
     /**

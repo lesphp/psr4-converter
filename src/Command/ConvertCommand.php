@@ -152,7 +152,17 @@ class ConvertCommand extends Command
         }
 
         foreach ($mappedResult->getFiles() as $mappedFile) {
-            $converter->convert($mappedFile, $mappedResult, $createAliases, $additionalMappedResults);
+            if ($output->isDebug()) {
+                $output->writeln("Processing file: " . $mappedFile->getFilePath());
+            }
+
+            try {
+                $converter->convert($mappedFile, $mappedResult, $createAliases, $additionalMappedResults);
+            } catch (\Throwable $t) {
+                $output->writeln("Error processing file: " . $mappedFile->getFilePath());
+
+                throw $t;
+            }
         }
 
         if ($createAliases) {

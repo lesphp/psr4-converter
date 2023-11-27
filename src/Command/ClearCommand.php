@@ -79,16 +79,26 @@ class ClearCommand extends Command
         }
 
         foreach ($mappedResult->getFiles() as $mappedFile) {
+            if ($output->isDebug()) {
+                $output->writeln("Processing file: " . $mappedFile->getFilePath());
+            }
+
             $filePath = $mappedFile->getFilePath();
 
-            if ($filesystem->exists($filePath)) {
-                $relativeFilePath = substr($filePath, strlen($mappedResult->getSrcPath() . DIRECTORY_SEPARATOR));
+            try {
+                if ($filesystem->exists($filePath)) {
+                    $relativeFilePath = substr($filePath, strlen($mappedResult->getSrcPath() . DIRECTORY_SEPARATOR));
 
-                if (!$dryRun) {
-                    $filesystem->remove($filePath);
+                    if (!$dryRun) {
+                        $filesystem->remove($filePath);
+                    }
+
+                    $output->writeln($relativeFilePath);
                 }
+            } catch (\Throwable $t) {
+                $output->writeln("Error processing file: " . $filePath);
 
-                $output->writeln($relativeFilePath);
+                throw $t;
             }
         }
 

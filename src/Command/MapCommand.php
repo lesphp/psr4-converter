@@ -266,7 +266,17 @@ class MapCommand extends Command
         $mappedFiles = [];
 
         foreach ($finder as $file) {
-            $mappedFiles[] = $mapper->map($file->getRealPath());
+            if ($output->isDebug()) {
+                $output->writeln("Processing file: " . $file->getRealPath());
+            }
+
+            try {
+                $mappedFiles[] = $mapper->map($file->getRealPath());
+            } catch (\Throwable $t) {
+                $output->writeln("Error processing file: " . $file->getRealPath());
+
+                throw $t;
+            }
         }
 
         $mappedResult = new MappedResult($phpParserKind, $srcRealPath, $includeDirPath, $mappedFiles);
