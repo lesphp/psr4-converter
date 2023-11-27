@@ -42,7 +42,7 @@ The map command will generate a mapping json file containing all the information
 including all old and new name mappings.
 
 ```shell
-psr4-converter map "App" /path/to/source -m /tmp/.psr4-converter.json --append-namespace --underscore-conversion --ignore-namespaced-underscore -- ignore-path="ignored_relative_path"
+psr4-converter map "App" /path/to/source -m /tmp/.psr4-converter.json --append-namespace --underscore-conversion --ignore-namespaced-underscore --ignore-path="ignored_relative_path"
 ```
 For example the above command will generate the mapping file `/tmp/.psr4-converter.json` with all conversions to the `/path/to/source` directory, will also:
 
