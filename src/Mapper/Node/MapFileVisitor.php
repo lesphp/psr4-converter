@@ -126,7 +126,7 @@ class MapFileVisitor extends AbstractNodeVisitor
 
     private function isValidRootStatement(Node $node): bool
     {
-        return $node instanceof Node\Stmt\Class_
+        return ($node instanceof Node\Stmt\Class_ && !$node->isAnonymous())
             || $node instanceof Node\Stmt\Interface_
             || $node instanceof Node\Stmt\Trait_
             || $node instanceof Node\Stmt\Enum_

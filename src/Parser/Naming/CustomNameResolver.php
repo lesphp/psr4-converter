@@ -41,7 +41,9 @@ class CustomNameResolver extends PhpParserNameResolver
 
         if ($node instanceof Node\Stmt\GroupUse || $node instanceof Node\Stmt\Use_) {
             return NodeTraverser::DONT_TRAVERSE_CHILDREN;
-        } elseif ($node instanceof Node\Stmt\ClassLike) {
+        } elseif ($node instanceof Node\Stmt\Class_ && !$node->isAnonymous()) {
+            $this->getNameContext()->addDefinition($node->name->toString(), Node\Stmt\Use_::TYPE_NORMAL);
+        } elseif ($node instanceof Node\Stmt\ClassLike && !$node instanceof Node\Stmt\Class_) {
             $this->getNameContext()->addDefinition($node->name->toString(), Node\Stmt\Use_::TYPE_NORMAL);
         } elseif ($node instanceof Node\Stmt\Function_) {
             $this->getNameContext()->addDefinition($node->name->toString(), Node\Stmt\Use_::TYPE_FUNCTION);
