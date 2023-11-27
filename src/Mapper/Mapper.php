@@ -92,7 +92,7 @@ class Mapper implements MapperInterface
             $stmts = $this->parser->parse($content);
             $hasInclude = $this->hasInclude($stmts);
 
-            $this->checkNodesConstraints($stmts, false);
+            $this->checkNodesConstraints($stmts, false, false);
         } catch (InvalidRootStatementException $e) {
             $stmt = $e->getStmt();
             $mappedError = new MappedError(
@@ -146,18 +146,19 @@ class Mapper implements MapperInterface
      * @param Node[] $nodes
      * @throws InvalidRootStatementException
      */
-    private function checkNodesConstraints(array $nodes, bool $allowFuncCall): void
+    private function checkNodesConstraints(array $nodes, bool $allowFuncCall, bool $allowReturnOrExit): void
     {
         foreach ($nodes as $stmt) {
             $stmt = $stmt instanceof Node\Stmt\Expression ? $stmt->expr : $stmt;
 
             switch (true) {
                 case $stmt instanceof Node\Stmt\Namespace_:
-                    $this->checkNodesConstraints((array)$stmt->stmts, false);
+                    $this->checkNodesConstraints((array)$stmt->stmts, false, false);
                     continue 2;
                 case $stmt instanceof Node\Stmt\If_:
                     $this->checkNodesConstraints(
                         (new NodeManager())->getAllConditionalStmts($stmt),
+                        true,
                         true
                     );
                     continue 2;
@@ -174,6 +175,12 @@ class Mapper implements MapperInterface
                 case $allowFuncCall
                     && $stmt instanceof Node\Expr\FuncCall
                     && $this->isFuncCallAllowed($stmt):
+                    continue 2;
+                case $allowReturnOrExit
+                    && (
+                        $stmt instanceof Node\Expr\Exit_
+                        || $stmt instanceof Node\Stmt\Return_
+                    ):
                     continue 2;
                 default:
                     throw new InvalidRootStatementException(
